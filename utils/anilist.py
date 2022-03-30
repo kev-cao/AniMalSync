@@ -11,14 +11,43 @@ class AnilistClient:
         self.session = requests.Session()
         self.api = "https://graphql.anilist.co/"
 
-    def fetch_recently_updated_anime(self, username: str, updated_after: int=0, page: int=0, per_page: int=50) -> [dict]:
+    def fetch_recently_updated_anime(self, username: str, updated_after: int=0) -> [dict]:
         """
-        Fetches all recently updated anime after a certain date for a given user.
+        Fetches all recently updated anime after a certain date.
 
         Args:
             username (str): The username of the user to fetch data about
-            updated_after (int, optional): Epoch format. Only anime that were updated after this
-                timestamp should be shown
+            updated_after (int, optional): Epoch format. Only anime that
+                were updated after this timestamp should be shown
+
+        Returns:
+            [dict]: A list of ANIME type MediaList entries
+
+        Raises:
+            Exception: Error with API query
+        """
+        curr_page = 0
+        entries = []
+
+        while True:
+            entry_page = self.__fetch_recently_updated_anime(username, updated_after, curr_page)
+            if entry_page:
+                entries += entry_page
+                curr_page += 1
+            else:
+                break
+
+        return entries
+
+    def __fetch_recently_updated_anime(self, username: str, updated_after: int=0, page: int=0, per_page: int=50) -> [dict]:
+        """
+        Fetches all recently updated anime after a certain date for a
+        given user by page.
+
+        Args:
+            username (str): The username of the user to fetch data about
+            updated_after (int, optional): Epoch format. Only anime that
+                were updated after this timestamp should be shown
             page (int, optional): Which page of paginated results to fetch
             per_page (int, optional): Number of entries per page
 
@@ -34,13 +63,13 @@ class AnilistClient:
         animeEntry = resp['data']['Page']['mediaList'][0]
 
         # If first entry does not pass filter, then no entries after this will.
-        if animeEntry['updatedAt'] < updated_after:
+        if animeEntry['updatedAt'] <= updated_after:
             return []
 
         query = self.__construct_anime_list_query(username, page, per_page)
         resp = self.__make_api_query(query)
         animeEntries = resp['data']['Page']['mediaList']
-        return list(filter(lambda entry : entry['updatedAt'] >= updated_after, animeEntries))
+        return list(filter(lambda entry : entry['updatedAt'] > updated_after, animeEntries))
 
     def __make_api_query(self, query: str):
         """
@@ -83,23 +112,13 @@ class AnilistClient:
                                     romaji
                                     english
                                     native
-                                    userPreferred
                                 }}
                             }}
-                            score
+                            score(format: POINT_10_DECIMAL)
                             updatedAt
-                            startedAt {{
-                                year
-                                month
-                                day
-                            }}
-                            completedAt {{
-                                year
-                                month
-                                day
-                            }}
                             progress
                             status
+                            repeat
                         }}
                     }}
                 }}""")
