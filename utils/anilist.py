@@ -1,6 +1,8 @@
 import requests
 import datetime
 from textwrap import dedent
+from utils.httpexception import HTTPException
+from utils.logger import logger
 
 class AnilistClient:
     """
@@ -55,7 +57,7 @@ class AnilistClient:
             [dict]: A list of ANIME type MediaList entries
 
         Raises:
-            Exception: Error with API query
+            HTTPException: Error with API query
         """
         # Fetch first entry of page to see if it is passes the updated_after filter.
         query = self.__construct_anime_list_query(username, page)
@@ -82,12 +84,15 @@ class AnilistClient:
             dict: The HTTP response
 
         Raises:
-            Exception: Error with query
+            HTTPException: Error with query
         """
-        resp = self.session.post(self.api, json={ 'query': query }).json()
-        if 'errors' in resp:
-            raise Exception(resp['errors'][0]['message'])
-        return resp
+        resp = self.session.post(self.api, json={ 'query': query })
+        resp_json = resp.json()
+        if 'errors' in resp_json:
+            err_msg = resp_json['errors'][0]['message']
+            logger.error("Error with Anilist query: {query}\n{err_msg}")
+            raise HTTPException(resp.status_code, err_msg)
+        return resp_json
 
     @classmethod
     def __construct_anime_list_query(cls, username: str, page: int=0, per_page: int=1) -> str:
@@ -123,5 +128,21 @@ class AnilistClient:
                     }}
                 }}""")
 
-# client = AnilistClient()
-# print(client.fetch_recently_updated_anime("luclid", datetime.datetime(2022, 3, 29).timestamp()))
+    @staticmethod
+    def get_anime_title(entry: dict, lang: str="romaji") -> str:
+        """
+        Fetches an anime's title from an Anilist entry.
+
+        Args:
+            entry (dict): The Anilist entry
+            lang (str): The title format (romaji, english, native)
+
+        Returns:
+            (str): The anime's title
+
+        Raises:
+            ValueError: Given invalid lang
+        """
+        if lang != 'romaji' and lang != 'english' and lang != 'native':
+            raise ValueError("Invalid title lang given. Must be romaji, english, or native")
+        return entry['media']['title'][lang]

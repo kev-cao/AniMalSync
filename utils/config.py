@@ -51,10 +51,7 @@ class UserConfig:
         """
         Loads a json file.
 
-        Args:
-            filename (string): The name of the file to load. Must include file extension.
-
-        Returns:
+        Args: filename (string): The name of the file to load. Must include file extension.  Returns:
             (json): The json file.
 
         Raises:

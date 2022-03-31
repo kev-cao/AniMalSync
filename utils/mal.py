@@ -4,12 +4,9 @@ import os
 from dotenv import load_dotenv
 from typing import Optional
 from utils.config import user_config
-
-class HTTPException(Exception):
-    def __init__(self, code, message=""):
-        super().__init__(message)
-        self.code = code
-        self.message = message
+from utils.logger import logger
+from utils.httpexception import HTTPException
+from utils.anilist import AnilistClient
 
 class MALClient:
     """
@@ -23,21 +20,21 @@ class MALClient:
         self.client_id = os.getenv("MAL_CLIENT_ID")
         self.client_secret = os.getenv("MAL_CLIENT_SECRET")
 
-    def update_anime_list_entry(self, user: str, anilist_entry: dict):
+    def update_anime_list_entry(self, user: str, entry: dict):
         """
         Updates MAL anime list with an Anilist anime entry for a given user.
 
         Args:
             user (str): Username of Anilist user to update entry for
-            anilist_entry (dict): The Anilist entry returned by AnilistClient
+            entry (dict): The Anilist entry returned by AnilistClient
 
-        Returns:
-            (bool): True if update successful, false otherwise
+        Raises:
+            (HTTPException): Update failed.
         """
         anime_id = None
-        title_types = ['romaji', 'english', 'native']
+        title_types = ['native', 'romaji', 'english'] # Native titles seem to have the least ambiguity
         for title_type in title_types:
-            if title := anilist_entry['media']['title'][title_type]:
+            if title := AnilistClient.get_anime_title(entry, title_type):
                 anime_id = self.get_anime_id(title)
                 if anime_id is not None:
                     break
@@ -47,7 +44,7 @@ class MALClient:
 
         url = f"{self.api}/anime/{anime_id}/my_list_status"
         access_code = user_config[user]['mal_access_token']
-        mal_entry = self.__convert_anilist_to_mal(anilist_entry)
+        mal_entry = self.__convert_anilist_to_mal(entry)
         access_code_failed = False
 
         while True:
@@ -56,23 +53,23 @@ class MALClient:
                     'Authorization': f"Bearer {access_code}"
                 })
                 self.__process_response(self.session.patch(url, data=mal_entry))
-                return True
+                return
             except HTTPException as err:
                 if err.code != 401:
-                    print(f"Error updating MAL entry: {err.message}")
-                    return False
+                    logger.error(f"Error updating MAL entry for {AnilistClient.get_anime_title(entry)}: {err.message}")
+                    raise err
 
                 # If access code fails twice, there is an issue.
                 if access_code_failed:
-                    print("MAL access code failed after refresh")
-                    return False
+                    logger.error(f"MAL access code for {user} failed after refresh.")
+                    raise err
 
                 access_code_failed = True
                 try:
                     access_code = self.refresh_user_access(user)
                 except:
-                    print("MAL user access code could not be refreshed")
-                    return False
+                    logger.error(f"MAL access code for {user} could not be refreshed. Need to reauth.")
+                    raise err
 
     def get_anime_id(self, title: str) -> Optional[int]:
         """
@@ -91,7 +88,7 @@ class MALClient:
         try:
             resp = self.__process_response(self.session.get(url))
         except HTTPException:
-            print(f"Error fetching anime with title {url_title}")
+            logger.warning(f"Error fetching anime using title {url_title}")
             return None
 
         if len(resp['data']):
@@ -145,12 +142,12 @@ class MALClient:
                     )
         return resp_json
     
-    def __convert_anilist_to_mal(self, anilist_entry: dict) -> dict:
+    def __convert_anilist_to_mal(self, entry: dict) -> dict:
         """
         Converts an Anilist entry into a MAL entry to update MAL list.
 
         Args:
-            anilist_entry (dict): The Anilist entry to convert
+            entry (dict): The Anilist entry to convert
 
         Returns:
             (dict): The MAL entry translation
@@ -163,11 +160,11 @@ class MALClient:
                 'PAUSED': 'on_hold',
                 'REPEATING': 'watching'
                 }
-        status = status_conversion[anilist_entry['status']]
+        status = status_conversion[entry['status']]
         return {
                 'status': status,
-                'is_rewatching': anilist_entry['repeat'] > 0 and status == 'watching',
-                'score': round(anilist_entry['score']),
-                'num_watched_episodes': anilist_entry['progress'],
-                'num_times_rewatched': anilist_entry['repeat']
+                'is_rewatching': entry['repeat'] > 0 and status == 'watching',
+                'score': round(entry['score']),
+                'num_watched_episodes': entry['progress'],
+                'num_times_rewatched': entry['repeat']
                 }

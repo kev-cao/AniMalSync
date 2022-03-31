@@ -1,6 +1,8 @@
 from utils.anilist import AnilistClient
 from utils.mal import MALClient
 from utils.config import user_config
+from utils.httpexception import HTTPException
+from utils.logger import logger
 
 def main():
     anilist = AnilistClient()
@@ -10,10 +12,12 @@ def main():
     for user in users:
         anime_entries = anilist.fetch_recently_updated_anime(user, user_config[user]['last_synced'])[::-1]
         for entry in anime_entries:
-            if mal.update_anime_list_entry(user, entry):
+            try:
+                mal.update_anime_list_entry(user, entry)
                 user_config[user]['last_synced'] = entry['updatedAt']
-            else:
-                print(f"Failed to update anime {entry['media']['title']['romaji']}")
+                logger.info(f"User: {user} | Synced {AnilistClient.get_anime_title(entry)}")
+            except HTTPException as err:
+                print(f"HTTP {err.code} ERROR: {err.message}")
 
     user_config.save()
 
