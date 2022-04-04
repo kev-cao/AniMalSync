@@ -118,6 +118,7 @@ class AnilistClient:
                                     english
                                     native
                                 }}
+                                idMal
                             }}
                             score(format: POINT_10_DECIMAL)
                             updatedAt

@@ -31,16 +31,20 @@ class MALClient:
         Raises:
             (HTTPException): Update failed.
         """
-        anime_id = None
-        title_types = ['native', 'romaji', 'english'] # Native titles seem to have the least ambiguity
-        for title_type in title_types:
-            if title := AnilistClient.get_anime_title(entry, title_type):
-                anime_id = self.get_anime_id(title)
-                if anime_id is not None:
-                    break
+        anime_id = entry['media']['idMal']
 
-        if anime_id is None:
-            return False
+        ######
+        # Anilist tags their anime entries with the MAL id, so this is no longer needed for now.
+        #####
+        # title_types = ['native', 'romaji', 'english'] # Native titles seem to have the least ambiguity
+        # for title_type in title_types:
+            # if title := AnilistClient.get_anime_title(entry, title_type):
+                # anime_id = self.get_anime_id(title)
+                # if anime_id is not None:
+                    # break
+# 
+        # if anime_id is None:
+            # return False
 
         url = f"{self.api}/anime/{anime_id}/my_list_status"
         access_code = user_config[user]['mal_access_token']
@@ -73,6 +77,7 @@ class MALClient:
 
     def get_anime_id(self, title: str) -> Optional[int]:
         """
+        (DEPRECATED: Anilist pairs anime with MAL ID)
         Searches MAL for the ID of an anime with the given title. Returns the
         top match.
 
