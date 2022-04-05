@@ -35,6 +35,7 @@ def lambda_handler(event, context):
         return create_response(500, "The server failed to fetch API keys.")
     except JSONDecodeError as e:
         print(e)
+        return create_response(500, "The config file could not be decoded.")
 
     # Perform MAL OAuth
     mal_id = config['MAL_CLIENT_ID']
@@ -46,9 +47,22 @@ def lambda_handler(event, context):
         'code': auth_code,
         'code_verifier': code_verifier,
         'grant_type': "authorization_code"
-        })
+        }).json()
 
-    print(resp.json())
+    if 'error' in resp:
+        # Record failed authorization attempt in config
+        config['users'][user]['auth_failed'] = True
+        s3.put_object(Body=json.dumps(config), Bucket=bucket, Key=key)
+        return create_response(401,
+                ("Error with authorizing user.\nDetails:\n"
+                    f"Error: {resp['error']}\n"
+                    f"Message: {resp['message']}\n"
+                    f"Hint: {resp['hint']}"))
+
+    config['users'][user]['mal_access_token'] = resp['access_token']
+    config['users'][user]['mal_refresh_token'] = resp['refresh_token']
+    config['users'][user]['auth_failed'] = False
+    s3.put_object(Body=json.dumps(config), Bucket=bucket, Key=key)
     return create_response(200, "Successfully authorized!")
 
 def create_response(code: int, body: str) -> dict:
