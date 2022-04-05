@@ -1,3 +1,4 @@
+import os
 import boto3
 
 def lambda_handler(event, context):
@@ -11,6 +12,6 @@ def lambda_handler(event, context):
     Returns:
         (dict): JSON response to triggering event
     """
-    ses = boto3.client("ses", region_name=process.env.AWS_REGION)
+    ses = boto3.client("ses", region_name=os.environ['AWS_REGION'])
     print(event)
     print(context)
