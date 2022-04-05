@@ -54,10 +54,10 @@ def lambda_handler(event, context):
         config['users'][user]['auth_failed'] = True
         s3.put_object(Body=json.dumps(config), Bucket=bucket, Key=key)
         return create_response(401,
-                ("Error with authorizing user.\nDetails:\n"
-                    f"Error: {resp['error']}\n"
-                    f"Message: {resp['message']}\n"
-                    f"Hint: {resp['hint']}"))
+                ("Error with authorizing user.<br /><h2>Details:</h2><br />"
+                    f"<b>Error:</b> {resp['error']}<br />"
+                    f"<b>Message:</b> {resp['message']}<br />"
+                    f"<b>Hint:</b> {resp['hint']}"))
 
     config['users'][user]['mal_access_token'] = resp['access_token']
     config['users'][user]['mal_refresh_token'] = resp['refresh_token']
@@ -77,7 +77,10 @@ def create_response(code: int, body: str) -> dict:
         (dict): JSON HTTP response
     """
     return {
+            'headers': {
+                'Content-Type': 'text/html'
+                },
             'statusCode': code,
-            'body': json.dumps(body)
+            'body': body
             }
 
