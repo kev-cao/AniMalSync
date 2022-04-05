@@ -4,7 +4,8 @@ on:
     branches:
       - 'master'
 jobs:
-  build:
+  auth:
+    name: Build authorization lambda
     runs-on: ubuntu-latest
     steps:
       - name: Checkout source code
@@ -14,7 +15,7 @@ jobs:
       - name: Setting up environment
         run: |
           python -m pip install --upgrade pip
-          cd lambda
+          cd lambda/auth
           pip3 install -r requirements.txt -t .
           zip -r lambda-env.zip .
       - name: Deploying to AWS Lambda
@@ -24,4 +25,19 @@ jobs:
           aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws_region: ${{ secrets.AWS_REGION }}
           function_name: Anilist-to-MAL-Authorizer
-          zip_file: lambda/lambda-env.zip
+          zip_file: lambda/auth/lambda-env.zip
+  email:
+    name: Build email notification lambda
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v2
+      - name: Setting up Python
+        uses: actions/setup-python@v2
+      - name: Deploying to AWS Lambda
+        uses: appleboy/lambda-action@master
+        aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws_region: ${{ secrets.AWS_REGION }}
+        function_name: MAL-OAuth-Emailer
+        source: lambda/email/email_lambda.py
