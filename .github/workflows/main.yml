@@ -9,6 +9,15 @@ jobs:
     steps:
       - name: Checkout source code
         uses: actions/checkout@v2
+      - name: Setting up Python
+        uses: actions/setup-python@v2
+      - name: Setting up environment
+        run: |
+          python -m pip install --upgrade pip
+          cd lambda
+          pip3 install -r requirements.txt -t .
+          cd ..
+          zip -r lambda-env.zip lambda/
       - name: Deploying to AWS Lambda
         uses: appleboy/lambda-action@master
         with:
@@ -16,4 +25,4 @@ jobs:
           aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws_region: ${{ secrets.AWS_REGION }}
           function_name: Anilist-to-MAL-Authorizer
-          source: lambda/auth_lambda.py
+          zip_file: lambda-env.zip
