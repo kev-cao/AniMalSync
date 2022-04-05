@@ -1,20 +1,32 @@
 import json
 import os
+import boto3
+from dotenv import load_dotenv
+from utils.logger import logger
 
-class UserConfig:
+class Config:
+    """
+    Contains the configuration values for the application.
+    """
     def __init__(self):
-        self.file = "../config/users.json"
+        load_dotenv()
+        self.s3 = boto3.client('s3')
+        self.bucket = 'anilist-to-mal-config'
+        self.key = 'config.json'
         try:
-            self.config = self.__load_json_file(self.file)
-        except IOError:
-            self.config = {}
-            self.save()
+            data = self.s3.get_object(Bucket=self.bucket, Key=self.key)
+            self.config = json.loads(data['Body'].read())
+        except Exception as e:
+            logger.error("Could not load config file.")
+            raise e
 
     def save(self):
         """
-        Saves the config file to disk.
+        Saves the config file to AWS S3.
         """
-        self.__save_json_file(self.file, self.config)
+        self.s3.put_object(Body=json.dumps(self.config),
+                Bucket=self.bucket,
+                Key=self.key)
 
     def __setitem__(self, key, item):
         self.config[key] = item
@@ -46,33 +58,4 @@ class UserConfig:
     def items(self):
         return self.config.items()
 
-    @classmethod
-    def __load_json_file(cls, filename: str):
-        """
-        Loads a json file.
-
-        Args: filename (string): The name of the file to load. Must include file extension.  Returns:
-            (json): The json file.
-
-        Raises:
-            IOError: If the file does not exist.
-        """
-        try:
-            with open(os.path.join(os.path.dirname(__file__), filename), 'r') as f:
-                return json.load(f)
-        except IOError:
-            raise IOError(f"Could not find {filename}.")
-
-    @classmethod
-    def __save_json_file(cls, filename: str, data):
-        """
-        Saves data to the provided json filename.
-
-        Args:
-            filename (string): The name of the file to save to. Must include file extension.
-            data (obj): The data to save to the file.
-        """
-        with open(os.path.join(os.path.dirname(__file__), filename), 'w') as f:
-            json.dump(data, f, indent=4)
-
-user_config = UserConfig()
+config = Config()

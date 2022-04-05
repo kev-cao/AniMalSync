@@ -48,6 +48,7 @@ def lambda_handler(event, context):
     ses = boto3.client('ses', region_name=os.environ['AWS_REGION'])
     code_challenge = secrets.token_urlsafe(100)[:128]
     auth_url = f"https://myanimelist.net/v1/oauth2/authorize?response_type=code&client_id={mal_id}&code_challenge={code_challenge}&state={user}"
+    print(f"Code Challenge for {user}: {code_challenge}")
 
     try:
         ses.send_email(

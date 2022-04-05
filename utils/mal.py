@@ -1,9 +1,12 @@
 import requests
 import urllib
+import boto3
 import os
+import json
+from time import time
 from dotenv import load_dotenv
 from typing import Optional
-from utils.config import user_config
+from utils.config import config
 from utils.logger import logger
 from utils.httpexception import HTTPException
 from utils.anilist import AnilistClient
@@ -17,8 +20,8 @@ class MALClient:
         load_dotenv()
         self.session = requests.Session()
         self.api = "https://api.myanimelist.net/v2"
-        self.client_id = os.getenv("MAL_CLIENT_ID")
-        self.client_secret = os.getenv("MAL_CLIENT_SECRET")
+        self.client_id = config['MAL_CLIENT_ID']
+        self.client_secret = config['MAL_CLIENT_SECRET']
 
     def update_anime_list_entry(self, user: str, entry: dict):
         """
@@ -47,7 +50,7 @@ class MALClient:
             # return False
 
         url = f"{self.api}/anime/{anime_id}/my_list_status"
-        access_code = user_config[user]['mal_access_token']
+        access_code = config['users'][user]['mal_access_token']
         mal_entry = self.__convert_anilist_to_mal(entry)
         access_code_failed = False
 
@@ -71,9 +74,9 @@ class MALClient:
                 access_code_failed = True
                 try:
                     access_code = self.refresh_user_access(user)
-                except:
-                    logger.error(f"MAL access code for {user} could not be refreshed. Need to reauth.")
-                    raise err
+                except Exception as e:
+                    self.send_auth_email_if_applicable(user)
+                    raise HTTPException(401, f"Must reauthorize user {user}.")
 
     def get_anime_id(self, title: str) -> Optional[int]:
         """
@@ -111,7 +114,8 @@ class MALClient:
         Returns:
             (str): The new access code for that user
         """
-        refresh_token = user_config[user]['mal_refresh_token']
+        user_config = config['users'][user]
+        refresh_token = user_config['mal_refresh_token']
         url = "https://myanimelist.net/v1/oauth2/token"
         resp = self.session.post(url, data={
             'client_id': self.client_id,
@@ -120,10 +124,31 @@ class MALClient:
             'refresh_token': refresh_token
         })
         data = self.__process_response(resp)
-        user_config[user]['mal_access_token'] = data['access_token']
-        user_config[user]['mal_refresh_token'] = data['refresh_token']
-        user_config.save()
+        user_config['mal_access_token'] = data['access_token']
+        user_config['mal_refresh_token'] = data['refresh_token']
+        config.save()
         return data['access_token']
+
+    def send_auth_email_if_applicable(self, user: str):
+        """
+        Sends an MAL authorization email to the user if they have not
+        already been notified recently.
+
+        Args:
+            user (str): The Anilist username
+        """
+        user_config = config['users'][user]
+        curr_time = int(time())
+        threshold = 10
+        if 'last_notified' not in user_config or curr_time - user_config['last_notified'] >= threshold: 
+            lambda_client = boto3.client('lambda', region_name=os.environ['AWS_REGION'])
+            resp = lambda_client.invoke(
+                    FunctionName='MAL-OAuth-Emailer',
+                    Payload=json.dumps({
+                        'user': user
+                        })
+                    )
+            print(resp)
    
     @classmethod
     def __process_response(cls, resp):
@@ -143,7 +168,7 @@ class MALClient:
         if 'error' in resp_json:
             raise HTTPException(
                     resp.status_code,
-                    f"{resp_json['error']}: {resp_json['message']}"
+                    f"{resp_json['error']}: {resp_json.get('message')}"
                     )
         return resp_json
     
