@@ -1,3 +1,4 @@
+import json
 import os
 import boto3
 import secrets
@@ -49,7 +50,7 @@ def lambda_handler(event, context):
     auth_url = f"https://myanimelist.net/v1/oauth2/authorize?response_type=code&client_id={mal_id}&code_challenge={code_challenge}&state={user}"
 
     try:
-        ses_client.send_email(
+        ses.send_email(
                 Destination={
                     'ToAddresses': [user_email]
                     },
@@ -59,15 +60,15 @@ def lambda_handler(event, context):
                             'Charset': 'UTF-8',
                             'Data': f"Click this link to authorize Anilist-to-MAL-sync to be able to update your MAL: {auth_url}"
                             }
+                        },
+                    'Subject': {
+                        'Charset': 'UTF-8',
+                        'Data': "Anilist-to-MAL-Sync Authorization"
                         }
-                    },
-                Subject={
-                    'Charset': 'UTF-8',
-                    'Data': "Anilist-to-MAL-Sync Authorization"
                     },
                 Source='defcoding@gmail.com'
                 )
-    except SES.Client.exceptions.MessageRejected as e:
+    except ses.exceptions.MessageRejected as e:
         print(e)
         return create_response(500, "Could not send notification email.")
 
