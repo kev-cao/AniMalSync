@@ -10,8 +10,9 @@ load_dotenv()
 client_id = os.getenv("MAL_CLIENT_ID")
 client_secret = os.getenv("MAL_CLIENT_SECRET")
 code_verifier = code_challenge = get_new_code_verifier()
+print(code_verifier)
 
-auth_url = f"https://myanimelist.net/v1/oauth2/authorize?response_type=code&client_id={client_id}&code_challenge={code_verifier}"
+auth_url = f"https://myanimelist.net/v1/oauth2/authorize?response_type=code&client_id={client_id}&code_challenge={code_challenge}&state=luclid"
 
 print(f"Click this URL to authorize: {auth_url}")
 
