@@ -143,12 +143,17 @@ class MALClient:
         # Resend email if authorization failed or if the user was notified past the threshold ago
         if user_config['auth_failed'] or 'last_notified' not in user_config or curr_time - user_config['last_notified'] >= threshold: 
             lambda_client = boto3.client('lambda', region_name=os.environ['AWS_REGION'])
-            lambda_client.invoke(
+            resp = lambda_client.invoke(
                     FunctionName='MAL-OAuth-Emailer',
                     Payload=json.dumps({
                         'user': user
                         })
                     )
+            if resp["StatusCode"] == 200:
+                logger.info(f"Successfully sent authorization email to user {user}.")
+            else:
+                logger.warning(f"Failed to send authorization email to user {user}.")
+
    
     @classmethod
     def __process_response(cls, resp):
