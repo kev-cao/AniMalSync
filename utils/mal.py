@@ -124,9 +124,19 @@ class MALClient:
             'refresh_token': refresh_token
         })
         data = self.__process_response(resp)
+
+        # Reload config file to prevent overwriting any code_challenges.
+        # If this fails, don't bother saving the tokens.
+        try:
+            config.refresh()
+            user_config = config['users'][user]
+        except Exception as e:
+            return data['access_token']
+
         user_config['mal_access_token'] = data['access_token']
         user_config['mal_refresh_token'] = data['refresh_token']
         config.save()
+
         return data['access_token']
 
     def send_auth_email_if_applicable(self, user: str):
