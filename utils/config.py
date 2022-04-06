@@ -20,6 +20,17 @@ class Config:
             logger.error(f"Could not load config file: {e}")
             raise e
 
+    def refresh(self):
+        """
+        Reloads the config from the S3 bucket.
+        """
+        try:
+            data = self.s3.get_object(Bucket=self.bucket, Key=self.key)
+            self.config = json.loads(data['Body'].read())
+        except Exception as e:
+            logger.error("Could not load config file.")
+            raise e
+
     def save(self):
         """
         Saves the config file to AWS S3.
