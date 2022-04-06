@@ -139,8 +139,9 @@ class MALClient:
         """
         user_config = config['users'][user]
         curr_time = int(time())
-        threshold = 10
-        if 'last_notified' not in user_config or curr_time - user_config['last_notified'] >= threshold: 
+        threshold = 3 * 60 * 60 * 24 # 3 days between emails
+        # Resend email if authorization failed or if the user was notified past the threshold ago
+        if user_config['auth_failed'] or 'last_notified' not in user_config or curr_time - user_config['last_notified'] >= threshold: 
             lambda_client = boto3.client('lambda', region_name=os.environ['AWS_REGION'])
             lambda_client.invoke(
                     FunctionName='MAL-OAuth-Emailer',

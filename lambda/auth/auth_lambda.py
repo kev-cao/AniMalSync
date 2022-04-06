@@ -51,7 +51,7 @@ def lambda_handler(event, context):
 
     if 'error' in resp:
         # Record failed authorization attempt in config
-        config['users'][user]['failed_auth'] = True
+        config['users'][user]['auth_failed'] = True
         s3.put_object(Body=json.dumps(config), Bucket=bucket, Key=key)
         return create_response(401,
                 ("Error with authorizing user.<br /><h2>Details:</h2><br />"
@@ -62,7 +62,7 @@ def lambda_handler(event, context):
     # Save access and refresh config
     config['users'][user]['mal_access_token'] = resp['access_token']
     config['users'][user]['mal_refresh_token'] = resp['refresh_token']
-    config['users'][user]['failed_auth'] = False
+    config['users'][user]['auth_failed'] = False
     s3.put_object(Body=json.dumps(config), Bucket=bucket, Key=key)
     return create_response(200, "Successfully authorized!")
 
