@@ -142,13 +142,12 @@ class MALClient:
         threshold = 10
         if 'last_notified' not in user_config or curr_time - user_config['last_notified'] >= threshold: 
             lambda_client = boto3.client('lambda', region_name=os.environ['AWS_REGION'])
-            resp = lambda_client.invoke(
+            lambda_client.invoke(
                     FunctionName='MAL-OAuth-Emailer',
                     Payload=json.dumps({
                         'user': user
                         })
                     )
-            print(resp)
    
     @classmethod
     def __process_response(cls, resp):
@@ -193,7 +192,7 @@ class MALClient:
         status = status_conversion[entry['status']]
         return {
                 'status': status,
-                'is_rewatching': entry['repeat'] > 0 and status == 'watching',
+                'is_rewatching': 1 if entry['repeat'] > 0 and status == 'watching' else 0,
                 'score': round(entry['score']),
                 'num_watched_episodes': entry['progress'],
                 'num_times_rewatched': entry['repeat']

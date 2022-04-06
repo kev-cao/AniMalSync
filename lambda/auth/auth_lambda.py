@@ -32,7 +32,7 @@ def lambda_handler(event, context):
         config = json.loads(data['Body'].read())
     except (s3.exceptions.NoSuchKey, s3.exceptions.InvalidObjectState) as e:
         print(e)
-        return create_response(500, "The server failed to fetch API keys.")
+        return create_response(500, "The server failed to fetch API config.")
     except JSONDecodeError as e:
         print(e)
         return create_response(500, "The config file could not be decoded.")
@@ -59,7 +59,7 @@ def lambda_handler(event, context):
                     f"<b>Message:</b> {resp['message']}<br />"
                     f"<b>Hint:</b> {resp['hint']}"))
 
-    # Save access and refresh keys
+    # Save access and refresh config
     config['users'][user]['mal_access_token'] = resp['access_token']
     config['users'][user]['mal_refresh_token'] = resp['refresh_token']
     config['users'][user]['failed_auth'] = False

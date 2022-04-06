@@ -28,7 +28,7 @@ class AnilistClient:
         Raises:
             Exception: Error with API query
         """
-        curr_page = 0
+        curr_page = 1
         entries = []
 
         while True:
@@ -41,7 +41,7 @@ class AnilistClient:
 
         return entries
 
-    def __fetch_recently_updated_anime(self, username: str, updated_after: int=0, page: int=0, per_page: int=50) -> [dict]:
+    def __fetch_recently_updated_anime(self, username: str, updated_after: int=0, page: int=1, per_page: int=50) -> [dict]:
         """
         Fetches all recently updated anime after a certain date for a
         given user by page.
@@ -95,7 +95,7 @@ class AnilistClient:
         return resp_json
 
     @classmethod
-    def __construct_anime_list_query(cls, username: str, page: int=0, per_page: int=1) -> str:
+    def __construct_anime_list_query(cls, username: str, page: int=1, per_page: int=1) -> str:
         """
         Constructs a GraphQL query to fetch a user's anime list from AniList in order of
         last update time.
