@@ -117,6 +117,7 @@ class MALClient:
         user_config = config['users'][user]
         refresh_token = user_config['mal_refresh_token']
         url = "https://myanimelist.net/v1/oauth2/token"
+        logger.info(f"Refreshing access token for user {user}")
         resp = self.session.post(url, data={
             'client_id': self.client_id,
             'client_secret': self.client_secret,
