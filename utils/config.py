@@ -17,7 +17,7 @@ class Config:
             data = self.s3.get_object(Bucket=self.bucket, Key=self.key)
             self.config = json.loads(data['Body'].read())
         except Exception as e:
-            logger.error("Could not load config file.")
+            logger.error(f"Could not load config file: {e}")
             raise e
 
     def save(self):
