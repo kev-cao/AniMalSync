@@ -10,7 +10,7 @@ class Config:
     """
     def __init__(self):
         load_dotenv()
-        self.s3 = boto3.client('s3')
+        self.s3 = boto3.client('s3', region_name=os.environ['AWS_REGION'])
         self.bucket = 'anilist-to-mal-config'
         self.key = 'config.json'
         try:
