@@ -4,10 +4,10 @@
 [![](https://img.shields.io/badge/API-MAL-%232e51a2?logo=MyAnimeList)](https://myanimelist.net/apiconfig/references/api/v2)
 [![](https://img.shields.io/badge/license-MIT-informational)](https://github.com/defCoding/anilist-to-mal-sync/blob/master/LICENSE)
 
-Syncs up anime episodes from Anilist to your MyAnimeList account
+Syncs up anime/manga entries from Anilist to your MyAnimeList account
 
 ## Context
-I had just recently switched over from MAL to Anilist for my anime organization. However, I still wanted to keep my MAL up to date as well in case I ever decided to switch back. Fortunately, both MAL and Anilist provide an API. The idea behind this script is to run every X minutes, and take any new updates on my Anilist account and mirror those changes on MAL.
+I had just recently switched over from MAL to Anilist for my anime/manga organization. However, I still wanted to keep my MAL up to date as well in case I ever decided to switch back. Fortunately, both MAL and Anilist provide an API. The idea behind this script is to run every X minutes, and take any new updates on my Anilist account and mirror those changes on MAL.
 
 ## Challenges
 Prior to this project, I only had exposure to REST APIs -- however, as Anilist uses a GraphQL API, this was a perfect chance for me to learn some GraphQL. The underlying mechanism of this program was fairly straight forward. Fetch paginated results of recent activity on my Anilist account, parse that into a MAL entry, and make a PUT request on MAL's API. This mechanism was implemented fairly quickly.
