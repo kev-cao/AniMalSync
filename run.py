@@ -10,12 +10,12 @@ def main():
     users = user_cache.keys()
 
     for user in users:
-        anime_entries = anilist.fetch_recently_updated_anime(user, user_cache[user]['last_synced'])[::-1]
-        for entry in anime_entries:
+        media_entries = anilist.fetch_recently_updated_media(user, user_cache[user]['last_synced'])[::-1]
+        for entry in media_entries:
             try:
-                mal.update_anime_list_entry(user, entry)
+                mal.update_media_list_entry(user, entry)
                 user_cache[user]['last_synced'] = entry['updatedAt']
-                logger.info(f"User: {user} | Synced {AnilistClient.get_anime_title(entry)}")
+                logger.info(f"User: {user} | [{entry['media']['type']}] Synced {AnilistClient.get_media_title(entry)}")
             except HTTPException as err:
                 logger.error(f"HTTP {err.code} ERROR: {err.message}")
                 if err.code == 401:

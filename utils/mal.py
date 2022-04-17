@@ -23,9 +23,9 @@ class MALClient:
         self.client_id = config['MAL_CLIENT_ID']
         self.client_secret = config['MAL_CLIENT_SECRET']
 
-    def update_anime_list_entry(self, user: str, entry: dict):
+    def update_media_list_entry(self, user: str, entry: dict):
         """
-        Updates MAL anime list with an Anilist anime entry for a given user.
+        Updates MAL media list with an Anilist media entry for a given user.
 
         Args:
             user (str): Username of Anilist user to update entry for
@@ -34,10 +34,11 @@ class MALClient:
         Raises:
             (HTTPException): Update failed.
         """
-        anime_id = entry['media']['idMal']
+        media_id = entry['media']['idMal']
+        media_type = entry['media']['type']
 
         ######
-        # Anilist tags their anime entries with the MAL id, so this is no longer needed for now.
+        # Anilist tags their entries with the MAL id, so this is no longer needed for now.
         #####
         # title_types = ['native', 'romaji', 'english'] # Native titles seem to have the least ambiguity
         # for title_type in title_types:
@@ -45,11 +46,11 @@ class MALClient:
                 # anime_id = self.get_anime_id(title)
                 # if anime_id is not None:
                     # break
-# 
+
         # if anime_id is None:
             # return False
 
-        url = f"{self.api}/anime/{anime_id}/my_list_status"
+        url = f"{self.api}/{media_type.lower()}/{media_id}/my_list_status"
         access_code = config['users'][user]['mal_access_token']
         mal_entry = self.__convert_anilist_to_mal(entry)
         access_code_failed = False
@@ -63,7 +64,7 @@ class MALClient:
                 return
             except HTTPException as err:
                 if err.code != 401:
-                    logger.error(f"Error updating MAL entry for {AnilistClient.get_anime_title(entry)}: {err.message}")
+                    logger.error(f"Error updating MAL {media_type} entry for {AnilistClient.get_media_title(entry)}: {err.message}")
                     raise err
 
                 # If access code fails twice, there is an issue.
@@ -190,10 +191,30 @@ class MALClient:
     
     def __convert_anilist_to_mal(self, entry: dict) -> dict:
         """
-        Converts an Anilist entry into a MAL entry to update MAL list.
+        Converts an Anilist media entry into a MAL entry to update MAL list.
 
         Args:
             entry (dict): The Anilist entry to convert
+
+        Returns:
+            (dict): The MAL entry translation
+        """
+        if entry['media']['type'] == 'ANIME':
+            mal_entry = self.__convert_anilist_anime_to_mal(entry)
+        else:
+            mal_entry = self.__convert_anilist_manga_to_mal(entry)
+        
+        if entry['notes']:
+            mal_entry['comments'] = entry['notes']
+        
+        return mal_entry
+
+    def __convert_anilist_anime_to_mal(self, entry: dict) -> dict:
+        """
+        Converts an Anilist anime entry into a MAL anime entry to update MAL list.
+
+        Args:
+            entry (dict): The Anilist anime entry to convert
 
         Returns:
             (dict): The MAL entry translation
@@ -213,4 +234,32 @@ class MALClient:
                 'score': round(entry['score']),
                 'num_watched_episodes': entry['progress'],
                 'num_times_rewatched': entry['repeat']
+                }
+
+    def __convert_anilist_manga_to_mal(self, entry: dict) -> dict:
+        """
+        Converts an Anilist manga entry into a MAL manga entry to update MAL list.
+
+        Args:
+            entry (dict): The Anilist manga entry to convert
+
+        Returns:
+            (dict): The MAL entry translation
+        """
+        status_conversion = {
+                'CURRENT': 'reading',
+                'PLANNING': 'plan_to_read',
+                'COMPLETED': 'completed',
+                'DROPPED': 'dropped',
+                'PAUSED': 'on_hold',
+                'REPEATING': 'reading'
+                }
+        status = status_conversion[entry['status']]
+        return {
+                'status': status,
+                'is_rereading': 1 if entry['repeat'] > 0 and status == 'reading' else 0,
+                'score': round(entry['score']),
+                'num_volumes_read': entry['progressVolumes'],
+                'num_chapters_read': entry['progress'],
+                'num_times_reread': entry['repeat']
                 }
