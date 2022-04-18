@@ -5,7 +5,7 @@ on:
     branches:
       - 'master'
     paths:
-      - 'lambda/*'
+      - 'lambda/**'
 jobs:
   auth:
     name: Build authorization lambda
