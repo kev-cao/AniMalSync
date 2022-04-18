@@ -2,8 +2,10 @@ name: Deploy to AWS Lambda
 on: 
   workflow_dispatch:
   push:
+    branches:
+      - 'master'
     paths:
-      - 'lambda/'
+      - 'lambda/*'
 jobs:
   auth:
     name: Build authorization lambda
