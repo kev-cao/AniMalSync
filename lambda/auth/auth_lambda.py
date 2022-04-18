@@ -84,4 +84,3 @@ def create_response(code: int, body: str) -> dict:
             'statusCode': code,
             'body': body
             }
-
