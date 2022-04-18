@@ -1,8 +1,8 @@
 name: Deploy to AWS Lambda
 on: 
   push:
-    branches:
-      - 'master'
+    paths:
+      - 'lambda/'
 jobs:
   auth:
     name: Build authorization lambda
