@@ -29,14 +29,13 @@ def get_redirect_target():
         elif is_safe_url(target):
             return target
 
-def redirect_back(*, fallback, **values):
+def redirect_back(*, fallback):
     """
     Redirects to the target URL in the request if it is safe, otherwise
     redirects to a fallback.
 
     Args:
         fallback (str): Fallback endpoint in case request URL is not safe
-        values (dict): Query params
     """
     target = request.form['next'] if request.form \
         and 'next' in request.form else request.args.get('next')

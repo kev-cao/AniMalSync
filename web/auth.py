@@ -249,7 +249,7 @@ class RegisterForm(FlaskForm):
     ])
     password = PasswordField('Password', validators=[
         InputRequired(),
-        Length(max=100),
+        Length(max=60), # Bcrypt only works for up to 72 bytes
         StrongPasswordValidator(
             requireLength=True, requireChars=True,
             requireBothCase=True, requireNums=True
