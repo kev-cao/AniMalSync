@@ -1,0 +1,30 @@
+<!-- register.html - Register page for AniMalSync website -->
+
+{% extends "base.html" %}
+{% set active_page = "login" %}
+{% block body %}
+{% from "_formfield.html" import render_field %}
+<div class="card align-items-center w-50 mx-auto mt-5" style="max-width:500px; min-width:350px">
+    <h5 class="card-header w-100 text-center">
+        Register a New Account
+    </h5>
+    <form class="card-body text-center needs-validation" action="/register" method="POST">
+        {{ form.csrf_token }}
+        {{ render_field(form.anilist_user, class="form-control", placeholder=form.anilist_user.label.text)}}
+        {{ render_field(form.email, class="form-control", placeholder=form.email.label.text) }}
+        {{ render_field(form.password, class="form-control", placeholder=form.password.label.text) }}
+        {{ render_field(form.confirm_password, class="form-control", placeholder=form.confirm_password.label.text) }}
+        {{ render_field(form.access_code, class="form-control", placeholder=form.access_code.label.text) }}
+        {{ render_field(form.recaptcha, class="form-control mx-auto") }}
+        <div class="mb-3 form-check d-flex justify-content-center">
+            {{ form.remember_me(class="form-check-input") }}
+            <label class="form-check-label ms-2" for="{{ form.remember_me.id }}">
+                Remember Me
+            </label>
+        </div>
+        {{ render_field(form.errors_field, class="form-control") }}
+        <input type="submit" value="Register" class="btn btn-primary" />
+        <input type="hidden" value="{{ next or '' }}" name="next" />
+    </form>
+</div>
+{% endblock %}

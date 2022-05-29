@@ -1,0 +1,45 @@
+:root {
+    --color-primary: #202D51;
+    --color-secondary: #E7EBEE;
+    --color-action: #9EFAA0;
+}
+
+$primary: #2E4176;
+
+@import "../bootstrap/scss/bootstrap";
+
+$colors: (
+  "blue": #202D51,
+  "indigo": $indigo-500,
+  "purple": $purple-500,
+  "pink": $pink-500,
+  "red": $red-500,
+  "orange": $orange-400,
+  "yellow": $yellow-300,
+  "green": $green-400,
+  "teal": $teal-500,
+  "cyan": $cyan-500,
+  "white": $white,
+  "gray": $gray-500,
+  "gray-dark": $gray-800
+);
+
+body {
+    background-color: var(--color-secondary);
+}
+
+nav {
+    background-color: map-get($colors, "blue");
+}
+
+@each $color,
+$value in $theme-colors {
+    .btn-#{$color} {
+        @include button-variant($value, $value,
+            $hover-background: lighten($value, 10%),
+            $hover-border: lighten($value, 15%),
+            $active-background: lighten($value, 15%),
+            $active-border: lighten($value, 17.5%)
+        );
+    }
+}
