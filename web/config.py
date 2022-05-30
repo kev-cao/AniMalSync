@@ -39,6 +39,8 @@ class Config:
     SERVER_NAME = f"{APP_HOST}:{HOST_PORT}" \
         if FLASK_ENV == 'development' else HOST_IP
 
+    APP_EMAIL = 'animalsync.app@gmail.com'
+
     # AWS Variables
     AWS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID')
     AWS_SECRET_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY')
@@ -47,6 +49,8 @@ class Config:
     AWS_SNS_SYNC_TOPIC = 'arn:aws:sns:us-east-2:983398483317:AniMalSync-Sync-Notifier'
     AWS_USER_DYNAMODB_TABLE = 'AniMalSync-User-Data'
     AWS_LOG_DYNAMODB_TABLE = 'AniMalSync-Sync-Log'
+
+    VERIF_EMAIL_TEMPLATE = 'AniMalSync_Email_Verification'
 
     # Fetch app keys
     ssm = boto3.client('ssm', region_name=AWS_REGION_NAME)

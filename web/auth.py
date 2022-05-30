@@ -14,6 +14,7 @@ from flask_wtf import FlaskForm, RecaptchaField, Recaptcha
 from flask_wtf.csrf import CSRFProtect
 from wtforms import StringField, EmailField, PasswordField, HiddenField, BooleanField
 from wtforms.validators import InputRequired, Email, ValidationError, EqualTo, Length
+from util import get_dynamodb_user
 
 # Setup anti-CSRF protection for WTForms
 csrf = CSRFProtect()
@@ -22,18 +23,6 @@ csrf.init_app(app)
 # Set up login manager
 login_manager = LoginManager()
 login_manager.init_app(app)
-
-try:
-    # Set up user data dynamodb table
-    dynamodb = boto3.resource(
-        'dynamodb',
-        region_name=app.config['AWS_REGION_NAME']
-    )
-    user_table = dynamodb.Table(app.config['AWS_USER_DYNAMODB_TABLE'])
-except ClientError as e:
-    app.logger.error(f"Could not load User-Data table required for LoginManager: {e}")
-    raise e
-
 
 class User(UserMixin):
     """
@@ -56,12 +45,13 @@ class User(UserMixin):
     @property
     def is_active(self):
         if not self.email_verified:
-            user = user_table.get_item(
-                Key={ 'id' : self.id },
-                ProjectionExpression="email_verified"
-                )['Item']
-            
-            self.email_verified = bool(user['email_verified'])
+            try:
+                user = get_dynamodb_user(user_id=self.id, fields=['email_verified'])
+                self.email_verified = bool(user['email_verified'])
+            except ClientError as e:
+                app.logger.error(
+                    f"Failed to fetch user from DynamoDB to check email_verified: {e}"
+                )
 
         return self.email_verified
 
@@ -77,15 +67,15 @@ def load_user(user_id):
         User: encapsulation of User for LoginManager
     """
     try:
-        result = user_table.query(
-            ProjectionExpression="id,email,anilist_user_id,email_verified",
-            KeyConditionExpression=Key('id').eq(user_id)
-        )['Items']
+        user = get_dynamodb_user(
+            user_id=user_id,
+            fields=['id', 'email', 'anilist_user_id', 'email_verified']
+        )
     except ClientError as e:
         app.logger.warning(f"LoginManager could not load user with id {user_id}: {e}")
         return None
 
-    return User(result[0]) if result else None
+    return User(user) if user else None
 
 
 class AniListUserValidator:

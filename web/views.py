@@ -1,17 +1,26 @@
 import uuid
 import bcrypt
 import boto3
+import secrets
+import json
+import time
 from boto3.dynamodb.conditions import Key
 from botocore.exceptions import ClientError
-from flask import abort, redirect, render_template, request, session, url_for
-from flask_login import current_user, login_user, logout_user
+from flask import abort, redirect, render_template, request, url_for
+from flask_login import current_user, login_user, logout_user, login_required
 from app import app
-from auth import LoginForm, RegisterForm, User
-from util import redirect_back, get_redirect_target
+from auth import LoginForm, RegisterForm, User, login_manager
+from util import redirect_back, get_redirect_target, get_dynamodb_user
 
 class AuthenticationError(Exception):
     """
     Exception class for when user fails authentication.
+    """
+    pass
+
+class InvalidVerificationError(Exception):
+    """
+    Exception class for when user uses an invalid email verification link.
     """
     pass
 
@@ -37,18 +46,12 @@ def login():
     if form.validate_on_submit():
         # Fetch corresponding user to email from database
         try:
-            dynamo = boto3.resource(
-                'dynamodb',
-                region_name=app.config['AWS_REGION_NAME']
+            user = get_dynamodb_user(
+                email=form.email.data,
+                fields=[
+                    'id', 'email', 'anilist_user_id', 'email_verified', 'password'
+                ]
             )
-            table = dynamo.Table(app.config['AWS_USER_DYNAMODB_TABLE'])
-            users = table.query(
-                IndexName='email-index',
-                Select='SPECIFIC_ATTRIBUTES',
-                KeyConditionExpression=Key('email').eq(form.email.data),
-                ProjectionExpression=("id,email,anilist_user_id,"
-                                      "email_verified,password")
-            )['Items']
         except ClientError as e:
             app.logger.error(
                 f"Failed to fetch user from DynamoDB during login: {e}"
@@ -59,9 +62,8 @@ def login():
 
         # Authenticate user login
         try:
-            if not users: 
+            if not user: 
                 raise AuthenticationError()
-            user = users[0]
 
             peppered_password = form.password.data + app.config['SECRET_KEY']
             if not bcrypt.checkpw(
@@ -77,7 +79,7 @@ def login():
                 "Login failed. Incorrect email or password."
             )
         else:
-            return redirect_back(fallback=url_for('home'))
+            return redirect_back(fallback='home')
 
     return render_template('login.html', form=form, next=next_target)
 
@@ -87,7 +89,6 @@ def register():
     if current_user.is_authenticated:
         return redirect(url_for('home'))
 
-    next_target = get_redirect_target()
     form = RegisterForm()
     if form.validate_on_submit():
         # Generate salt and hash password
@@ -124,9 +125,9 @@ def register():
             )
         else:
             app.logger.debug(f"Registered user {form.email.data} with ID {user_id}")
-            return redirect_back(fallback=url_for('home'))
+            return redirect_back(fallback='home')
 
-    return render_template('register.html', form=form, next=next_target)
+    return render_template('register.html', form=form, next='/verify')
 
 @app.route('/about', methods=['GET'])
 def about():
@@ -135,4 +136,134 @@ def about():
 @app.route('/logout', methods=['GET'])
 def logout():
     logout_user()
-    return redirect_back(fallback=url_for('home'))
+    return redirect_back(fallback='home')
+
+@app.route('/verify', methods=['GET'])
+@login_required
+def send_verify():
+    if current_user.is_active:
+        return redirect(url_for('home'))
+
+    # Look for user and add verification code and timestamp.
+    try:
+        # Generate secret code for verification
+        code = secrets.token_urlsafe(32)
+        dynamo = boto3.resource(
+            'dynamodb',
+            region_name=app.config['AWS_REGION_NAME']
+        )
+        table = dynamo.Table(app.config['AWS_USER_DYNAMODB_TABLE'])
+        table.update_item(
+            Key={ 'id': current_user.id },
+            UpdateExpression=("SET verification_code = :code,"
+                                "verification_timestamp = :time"
+                                ),
+            ExpressionAttributeValues={
+                ':code': code,
+                ':time': int(time.time()) # UNIX Epoch
+            },
+            ConditionExpression=Key('id').eq(current_user.id)
+        )
+    except ClientError as e:
+        app.logger.error(f"Could not update user with verification data: {e}")
+        return render_template(
+            'send_verify.html',
+            body="Could not find account. Please contact site owner."
+        )
+    
+    # Generate and send email
+    try:
+        ses = boto3.client('ses', region_name=app.config['AWS_REGION_NAME'])
+        verif_url = f"{request.host_url}/verification?email={current_user.email}&code={code}"
+        ses.send_templated_email(
+            Source=app.config['APP_EMAIL'],
+            Destination={
+                'ToAddresses': [current_user.email]
+            },
+            Template=app.config['VERIF_EMAIL_TEMPLATE'],
+            TemplateData=json.dumps({
+                'url': verif_url
+            })
+        )
+
+        app.logger.debug(f"Sent verification email to {current_user.email}.")
+        return render_template(
+            'send_verify.html',
+            body=("Email verification sent. You will have 5 minutes to verify your "
+                  "email. It will take up to 60 seconds, and you may need to check "
+                  "your spam folder. If you still do not see it, press the "
+                  "'Resend Email' button below.")
+        )
+    except ClientError as e:
+        app.logger.error(f"Failed to send verification email to {current_user.email}: {e}")
+        return render_template(
+            'send_verify.html',
+            body=("Could not send verification email."
+                  "Please try again by clicking 'Resend Email' button below.")
+        )
+
+@app.route('/verification', methods=['GET'])
+@login_required
+def verify_email():
+    email = request.args.get('email')
+    code = request.args.get('code')
+
+    # Check if the verification link is valid
+    try:
+        user = get_dynamodb_user(
+            email=email,
+            fields=['verification_code', 'verification_timestamp']
+        )
+
+        curr_time = int(time.time()) 
+        if code != user['verification_code']:
+            raise InvalidVerificationError()
+        elif curr_time - user['verification_timestamp'] > 60 * 5:
+            app.logger.debug(f"Expired verification link for {email}")
+            return render_template(
+                'verification.html',
+                body=("This verification link has expired. Please send "
+                      "another link using the 'Resend Email' button below."),
+                allow_resend=True
+            )
+    except (KeyError, ClientError, InvalidVerificationError) as e:
+        app.logger.debug(f"Invalid verification link for {email}: {e}")
+        return render_template(
+            'verification.html',
+            body=("This is an invalid email verification link. "
+                    "If this was a mistake, sign into your account, go "
+                    "to your profile and resend the link again.")
+        )
+
+    # Update that the user has verified their email
+    try:
+        dynamo = boto3.resource(
+            'dynamodb',
+            region_name=app.config['AWS_REGION_NAME']
+        )
+        table = dynamo.Table(app.config['AWS_USER_DYNAMODB_TABLE'])
+        table.update_item(
+            Key={ 'id': current_user.id },
+            UpdateExpression=("SET email_verified = :verified "
+                              "REMOVE verification_code, "
+                              "verification_timestamp"),
+            ExpressionAttributeValues={ ':verified': True }
+        )
+
+        app.logger.debug(f"Verified user email {email}.")
+        return render_template(
+            'verification.html',
+            body="Your email address was successfully verified!"
+        )
+    except ClientError:
+        app.logger.error(f"Failed to update email {email} as verified: {e}")
+        return render_template(
+            'verification.html',
+            body=("An issue occurred on the server. Please resend the link "
+                  "using the 'Resend Email' button below."),
+            allow_resend=True
+        )
+
+@login_manager.unauthorized_handler
+def unauthorized_callback():
+    return redirect(url_for('login', next=request.full_path))

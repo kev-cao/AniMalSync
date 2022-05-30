@@ -31,8 +31,7 @@ if not os.path.exists(app.config['LOG_FILE_PATH']):
     os.makedirs(app.config['LOG_FILE_PATH'])
 log_file = os.path.join(
     app.config['LOG_FILE_PATH'], app.config['LOG_FILE_NAME'])
-log_file_handler = RotatingFileHandler(
-    log_file, maxBytes=1024 * 1024, backupCount=5)
+log_file_handler = RotatingFileHandler(log_file, maxBytes=1024 * 1024, backupCount=5)
 
 # Set up stream handler
 log_stream_handler = logging.StreamHandler()

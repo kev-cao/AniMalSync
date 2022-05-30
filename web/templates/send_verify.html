@@ -1,0 +1,17 @@
+<!-- send_verify.html - Page for sending verification email -->
+
+{% extends "base.html" %}
+{% block body %}
+<div class="card text-center w-50 mx-auto mt-5">
+    <div class="card-header">
+        Email Verification
+    </div>
+    <div class="card-body">
+        <p class="card-text">{{body}}</p>
+    </div>
+    <div class="card-footer text-muted">
+        Have not received the email? 
+        <a href="{{ url_for('send_verify') }}">Resend Email</a>
+    </div>
+</div>
+{% endblock %}
