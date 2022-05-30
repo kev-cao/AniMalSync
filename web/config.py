@@ -74,6 +74,22 @@ class Config:
         print(f"Malformed parameter value in SSM: {e}")
         raise e
 
+    # Fetch MAL keys
+    try:
+        param = ssm.get_parameter(
+            Name='/mal_client/keys',
+            WithDecryption=True
+        )['Parameter']['Value']
+        mal_keys = json.loads(param)
+        MAL_CLIENT_ID = mal_keys['MAL_CLIENT_ID']
+        MAL_CLIENT_SECRET = mal_keys['MAL_CLIENT_SECRET']
+    except ClientError as e:
+        print(f"Unable to retrieve MAL secrets from SSM: {e}")
+        raise e
+    except (JSONDecodeError, KeyError) as e:
+        print(f"Malformed parameter value in SSM: {e}")
+        raise e
+
 
 class DevelopmentConfig(Config):
     """

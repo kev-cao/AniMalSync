@@ -101,7 +101,7 @@ class AniListUserValidator:
             else:
                 app.logger.warning(
                     ("Could not verify AniList user "
-                     f"due to error response code: {e}")
+                     f"due to error response code: {resp}")
                 )
                 raise ValidationError(
                     ("There was an issue with verifying the AniList user. "

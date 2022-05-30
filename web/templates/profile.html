@@ -1,0 +1,39 @@
+<!-- profile.html - Profile page for user -->
+
+{% extends "base.html" %}
+{% set active_page = "profile" %}
+
+{% block body %}
+<div class="container-md mt-3">
+    <h2>Profile</h2>
+    <div>
+        {% if not current_user.is_active %}
+            <a class="btn btn-outline-danger" href="/verify" role="button">
+                Verify Email
+            </a>
+            <p class="text-muted d-inline-block mx-2">
+                Your email must be verified to enable syncing.
+            </p>
+        {% endif %}
+        <table class="container-sm mx-0" style="max-width:500px">
+            <tr>
+                <td class="col-5"><b>AniList User</b></td>
+                <td class="col-7">{{ anilist_username }}</td>
+            </tr>
+            <tr>
+                <td class="col-5"><b>MAL Account</b></td>
+                <td class="col-7 text-success">
+                    {% if mal_authorized %}
+                        <span class="bi bi-check-circle" role="img" aria-label="Success:"></span>
+                        Authorized!
+                    {% else %}
+                        <button type="button" class="btn btn-outline-danger">
+                            Click to Authorize
+                        </button>
+                    {% endif %}
+                </td>
+            </tr>
+        </table>
+    </div>
+</div>
+{% endblock %}

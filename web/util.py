@@ -1,4 +1,6 @@
 import boto3
+import requests
+from botocore.exceptions import ClientError
 from boto3.dynamodb.conditions import Key
 from app import app
 from flask import request, url_for, redirect
@@ -89,4 +91,108 @@ def get_dynamodb_user(*, user_id=None, email=None, fields=[]):
         user = users[0] if users else None
 
     return user
-    
+
+def get_anilist_username(user_id):
+    """
+    Fetches the username associated with AniList user id.
+
+    Args:
+        user_id (int): The AniList user id
+
+    Returns:
+        (str): The AniList username, or None if does not exist
+    """
+    query = f"""\
+        {{
+            User(id: {user_id}) {{
+                name
+            }}
+        }}
+        """
+    resp = requests.post(
+        "https://graphql.anilist.co",
+        json={'query': query}
+        )
+
+    if not resp.ok:
+        app.logger.error(
+            f"Could not find AniList user with id {user_id}: {resp}"
+        )
+        return None
+
+    try:
+        return resp.json()['data']['User']['name']
+    except KeyError as e:
+        app.logger.error(f"Malformed response from AniList API: {e}")
+        return None
+
+def mal_is_authorized(user):
+    """
+    Checks if the given user's MAL account is authorized.
+
+    Args:
+        user (obj): Flask-Login user object
+
+    Returns:
+        (bool): True if MAL is authorized, False otherwise.
+    """
+    mal_tokens = get_dynamodb_user(
+        user_id=user.id,
+        fields=['mal_access_token', 'mal_refresh_token']
+    )
+
+    if 'mal_access_token' not in mal_tokens:
+        return False
+
+    # Test MAL tokens
+    endpoint = "https://api.myanimelist.net/v2/users/@me"
+    resp = requests.get(endpoint, headers={
+        'Authorization': f"Bearer {mal_tokens['mal_access_token']}"
+    })
+
+    if not resp.ok:
+        # If error code is not authorization issue, then not authorized
+        if resp.status_code != 401:
+            return False
+
+        # Attempt to refresh using refresh token
+        refresh_url = "https://myanimelist.net/v1/oauth2/token"
+        app.logger.debug(f"Refreshing MAL token for user {user.email}.")
+        resp = requests.post(
+            refresh_url,
+            data={
+                'client_id': app.config['MAL_CLIENT_ID'],
+                'client_secret': app.config['MAL_CLIENT_SECRET'],
+                'grant_type': 'refresh_token',
+                'refresh_token': mal_tokens['refresh_token']
+            }
+        )
+
+        # If refresh succeeded, update Dynamo with new tokens
+        if resp.ok:
+            app.logger.debug(f"Successfully refreshed MAL token for {user.email}.")
+            new_tokens = resp.json()
+            try:
+                dynamodb = boto3.resource(
+                    'dynamodb',
+                    region_name=app.config['AWS_REGION_NAME']
+                )
+                table = dynamodb.Table(app.config['AWS_USER_DYNAMODB_TABLE'])
+                table.update_item(
+                    Key={ 'id': user.id },
+                    UpdateExpression=("SET mal_access_token = :access_token, "
+                                    "mal_refresh_token = :refresh_token"),
+                    ExpressionAttributeValues={
+                        ':access_token': new_tokens['access_token'],
+                        ':refresh_token': new_tokens['refresh_token']
+                    }
+                )
+            except ClientError as e:
+                app.logger.error(
+                    ("Failed to update DynamoDB with new MAL tokens "
+                     f"for user {user.email}: {e}")
+                )
+                return False
+
+    return resp.ok
+            

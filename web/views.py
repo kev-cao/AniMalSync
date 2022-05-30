@@ -10,7 +10,8 @@ from flask import abort, redirect, render_template, request, url_for
 from flask_login import current_user, login_user, logout_user, login_required
 from app import app
 from auth import LoginForm, RegisterForm, User, login_manager
-from util import redirect_back, get_redirect_target, get_dynamodb_user
+from util import (redirect_back, get_redirect_target, get_dynamodb_user,
+                  get_anilist_username, mal_is_authorized)
 
 class AuthenticationError(Exception):
     """
@@ -32,8 +33,15 @@ def home():
     return render_template('home.html')
 
 @app.route('/profile', methods=['GET'])
+@login_required
 def profile():
-    pass
+    anilist_username = get_anilist_username(current_user.anilist_user_id)
+    mal_authorized = mal_is_authorized(current_user)
+    return render_template(
+        'profile.html',
+        anilist_username=anilist_username,
+        mal_authorized=mal_authorized
+    )
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
