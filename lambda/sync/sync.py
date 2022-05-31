@@ -61,14 +61,11 @@ def lambda_handler(event, _):
                 else:
                     # If the saved sync sfn arn is the one that triggered this lambda,
                     # then we can remove it since it's being handled now.
-                    dynamo = boto3.resource(
-                        'dynamodb',
-                        region_name=os.environ['AWS_REGION_NAME']
-                    )
-                    table = dynamo.Table(os.environ['AWS_USER_DYNAMODB_TABLE'])
-                    table.update_item(
-                        Key={ 'id': user_id },
-                        UpdateExpression="REMOVE sync_sfn"
+                    update_dynamodb_user(
+                        user_id=user_id,
+                        data={
+                            'sync_sfn': None
+                        }
                     )
 
                     # I'm fairly certain this thing has a "fairly consistent" type of thing

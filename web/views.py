@@ -245,17 +245,13 @@ def verify_email():
 
     # Update that the user has verified their email
     try:
-        dynamo = boto3.resource(
-            'dynamodb',
-            region_name=app.config['AWS_REGION_NAME']
-        )
-        table = dynamo.Table(app.config['AWS_USER_DYNAMODB_TABLE'])
-        table.update_item(
-            Key={ 'id': current_user.id },
-            UpdateExpression=("SET email_verified = :verified "
-                              "REMOVE verification_code, "
-                              "verification_timestamp"),
-            ExpressionAttributeValues={ ':verified': True }
+        update_dynamodb_user(
+            user_id=current_user.id,
+            data={
+                'email_verified': True,
+                'verification_code': None,
+                'verification_timestamp': None
+            }
         )
 
         app.logger.debug(f"Verified user email {email}.")
@@ -427,7 +423,6 @@ def autosync():
             if 'sync_sfn' in user:
                 try:
                     sfn_exec = sfn.describe_execution(executionArn=user['sync_sfn'])
-                    print(sfn_exec)
                     if sfn_exec['status'] == 'RUNNING':
                         sfn.stop_execution(
                             executionArn=user['sync_sfn'],
@@ -446,7 +441,10 @@ def autosync():
         try:
             update_dynamodb_user(
                 user_id=current_user.id,
-                data={ 'sync_enabled': enable }
+                data={
+                    'sync_enabled': enable,
+                    'sync_sfn': None
+                }
             )
         except ClientError as e:
             app.logger.error(

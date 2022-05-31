@@ -72,11 +72,20 @@ def update_dynamodb_user(*, user_id: str, data: dict):
     if user is None:
         return
 
-    update_expr = f"SET {','.join(map(lambda k: f'{k} = :{k}', data.keys()))}"
-    attr_values = { f':{k}': v for k, v in data.items() }
+    to_update = list(filter(lambda kv: kv[1] is not None, data.items()))
+    to_remove = list(filter(lambda kv: kv[1] is None, data.items()))
+
+    query = []
+    if to_update:
+        query.append(f"SET {','.join(map(lambda kv: f'{kv[0]} = :{kv[0]}', to_update))}")
+    if to_remove:
+        query.append(f"REMOVE {','.join(map(lambda kv: kv[0], to_remove))}")
+
+    attr_values = { f':{kv[0]}': kv[1] for kv in to_update }
+
     user_table.update_item(
         Key={ 'id': user['id'] },
-        UpdateExpression=update_expr,
+        UpdateExpression=' '.join(query),
         ExpressionAttributeValues=attr_values
     )
 
