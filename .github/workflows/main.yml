@@ -28,12 +28,6 @@ jobs:
           aws_region: ${{ secrets.AWS_REGION_NAME }}
           function_name: AniMalSync-Script
           zip_file: lambda/sync/lambda-env.zip
-          environment: >
-            APP_EMAIL=animalsync.app@gmail.com,
-            LOG_LEVEL=INFO,
-            AWS_USER_DYNAMODB_TABLE=AniMalSync-User-Data,
-            AWS_SYNC_LOG_DYNAMODB_TABLE=AniMalSync-Sync-Log,
-            AWS_SFN_ARN=arn:aws:states:us-east-2:983398483317:stateMachine:AniMalSync-Sync-Publish
   email:
     name: Build email MAL authorization Lambda
     runs-on: ubuntu-latest
@@ -50,7 +44,3 @@ jobs:
           aws_region: ${{ secrets.AWS_REGION_NAME }}
           function_name: AniMalSync-OAuth-Emailer
           source: lambda/email/email_lambda.py
-          environment: >
-            APP_EMAIL=animalsync.app@gmail.com,
-            AUTH_EMAIL_TEMPLATE=AniMalSync_MAL_Auth,
-            AWS_USER_DYNAMODB_TABLE=AniMalSync-UserData

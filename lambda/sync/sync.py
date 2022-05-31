@@ -50,7 +50,7 @@ def lambda_handler(event, _):
                 raise MalUnauthorizedException(user_id)
 
             media_entries = anilist.fetch_recently_updated_media(
-                user['anilist_user_id'], user.get('last_sync_timestamp', 1653902100)
+                user['anilist_user_id'], user.get('last_sync_timestamp', int(time.time()))
             )[::-1]
 
             # Iterate through entries and update on MAL
@@ -100,11 +100,3 @@ def lambda_handler(event, _):
     return {
         'batchItemFailures': failures
     }
-
-# lambda_handler({
-    #'Records': [
-        # {
-            # "body": '{ "user_id": "5ef51c97-e58e-46ab-8c2e-96a9668e2b95", "last_sync_timestamp": 1653902144 }'
-        # }
-    # ]
-# }, None)

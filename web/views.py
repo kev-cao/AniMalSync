@@ -111,7 +111,8 @@ def register():
             'email': form.email.data,
             'anilist_user_id': form.anilist_user_id,
             'password': hashed_pwd,
-            'email_verified': False
+            'email_verified': False,
+            'sync_enabled': False
         }
 
         # Add user to DynamoDB
