@@ -46,7 +46,7 @@ class Config:
     AWS_USER_DYNAMODB_TABLE = 'AniMalSync-User-Data'
     AWS_LOG_DYNAMODB_TABLE = 'AniMalSync-Sync-Log'
     AWS_EMAIL_LAMBDA = 'AniMalSync-OAuth-Emailer'
-
+    AWS_SFN_SYNC = 'arn:aws:states:us-east-2:983398483317:stateMachine:AniMalSync-Sync-Publish'
     VERIF_EMAIL_TEMPLATE = 'AniMalSync_Email_Verification'
 
     # Fetch app keys

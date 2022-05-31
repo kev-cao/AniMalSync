@@ -1,5 +1,6 @@
 import boto3
 import requests
+import json
 from botocore.exceptions import ClientError
 from boto3.dynamodb.conditions import Key
 from app import app
@@ -225,3 +226,28 @@ def mal_is_authorized(user):
 
     return resp.ok
             
+def schedule_sync(*, user_id, now=False):
+    """
+    Schedules a sync for an AniMalSync user.
+
+    Args:
+        user_id (str): AniMalSync user id
+        now (bool): Whether the sync should happen immediately
+
+    Raises:
+        (ClientError): Failed to schedule sync
+    """
+    if now:
+        sns = boto3.resource('sns', region_name=app.config['AWS_REGION_NAME'])
+        sync_topic = sns.Topic(app.config['AWS_SNS_SYNC_TOPIC'])
+        sync_topic.publish(Message=json.dumps({
+            'user_id': user_id
+        }))
+    else:
+        sfn = boto3.client('stepfunctions')
+        sfn.start_execution(
+            stateMachineArn=app.config['AWS_SFN_SYNC'],
+            input=json.dumps({
+                'user_id': user_id
+            })
+        )

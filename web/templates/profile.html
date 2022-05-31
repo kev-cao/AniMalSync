@@ -107,27 +107,22 @@
         const form = $(this);
         const submitBtn = $("button[type=submit][clicked=true]", form).first();
         const otherBtn = submitBtn.attr("id") === "enable-sync-btn" ? $("#disable-sync-btn") : $("#enable-sync-btn");
-        console.log(otherBtn);
-        let tmpField = $("<input type='hidden' />");
-        tmpField
-            .attr("name", submitBtn.name)
+        let tmpField = $("<input type='hidden' />")
             .val(submitBtn.val())
-            .appendTo(form);
+            .attr("name", submitBtn.attr("name"));
+        form.append(tmpField);
 
         $.ajax({
             type: "PATCH",
             url: "{{ url_for('autosync') }}",
             contentType: "application/x-www-form-urlencoded; charset=UTF-8",
-            data: $(this).serialize(),
+            data: form.serialize(),
             success: function(resp) {
-                $("#toast-body").text(`Successfully ${submitBtn.val() == 1 ? "enabled" : "disabled"} auto-sync.`);
                 submitBtn.addClass("d-none");
                 otherBtn.removeClass("d-none");
             },
-            error: function(resp) {
-                $("#toast-body").text(`Failed to ${submitBtn.val() == 1 ? "enable" : "disable"} auto-sync. Please try again later.`);
-            },
-            complete: function() {
+            complete: function(resp) {
+                $("#toast-body").text(resp['responseJSON']['message']);
                 const toast = new bootstrap.Toast($("#toast"));
                 toast.show();
                 submitBtn.blur();

@@ -13,7 +13,8 @@ from app import app
 from auth import User, login_manager
 from forms import LoginForm, RegisterForm, AuthorizeMALForm, AutoSyncForm
 from utils import (redirect_back, get_redirect_target, get_dynamodb_user,
-                  update_dynamodb_user, get_anilist_username, mal_is_authorized)
+                  update_dynamodb_user, get_anilist_username, mal_is_authorized,
+                  schedule_sync)
 
 class AuthenticationError(Exception):
     """
@@ -380,9 +381,86 @@ def send_mal_auth_email():
 @app.route('/autosync', methods=['PATCH'])
 @login_required
 def autosync():
-    is_active = request.form.get('autosync')
-    print(request.form)
-    return { 'success': True }, 200
+    enable = bool(int(request.form.get('autosync')))
+    
+    if enable and not mal_is_authorized(current_user):
+        return {
+            'success': False,
+            'message': "Your MAL account must be authorized before you can enable syncing."
+        }, 401
+    
+    if enable:
+        try:
+            schedule_sync(user_id=current_user.id, now=True)
+        except ClientError as e:
+            app.logger.error(f"Failed to schedule sync for user {current_user.id}: {e}")
+            return {
+                'success': False,
+                'message': "Sync failed. Please try again later."
+            }, 500
+        else:
+            try:
+                update_dynamodb_user(
+                    user_id=current_user.id,
+                    data={ 'sync_enabled': enable }
+                )
+            except ClientError as e:
+                app.logger.error(
+                    f"[User {current_user.id}] Failed to enable auto-sync: {e}"
+                )
+                return {
+                    'success': False,
+                    'message': "Sync scheduled, but failed to enable auto-sync. Please try again later."
+                }, 500
+
+        return {
+            'success': True,
+            'message': "Successfully scheduled sync and enabled auto-sync."
+        }, 200
+    else:
+        sfn = boto3.client('stepfunctions')
+        try:
+            user = get_dynamodb_user(
+                user_id=current_user.id,
+                fields=['sync_sfn']
+            )
+            if 'sync_sfn' in user:
+                try:
+                    sfn_exec = sfn.describe_execution(executionArn=user['sync_sfn'])
+                    print(sfn_exec)
+                    if sfn_exec['status'] == 'RUNNING':
+                        sfn.stop_execution(
+                            executionArn=user['sync_sfn'],
+                            cause=(f"[User {current_user.id}] Cancelling auto-sync, "
+                                "so cancel running SFN.")
+                        )
+                except ClientError as e:
+                    app.logger.warning(
+                        (f"[User {current_user.id}] Failure when "
+                         f"cancelling any running SFN: {e}")
+                    )
+        except ClientError as e:
+            app.logger.error((f"[User {current_user.id}] Failure looking up user "
+                 "sync SFN: {e}"))
+
+        try:
+            update_dynamodb_user(
+                user_id=current_user.id,
+                data={ 'sync_enabled': enable }
+            )
+        except ClientError as e:
+            app.logger.error(
+                f"[User {current_user.id}] Failed to disable auto-sync: {e}"
+            )
+            return {
+                'success': False,
+                'message': "Failed to disable auto-sync. Please try again later."
+            }, 500
+
+        return {
+            'success': True,
+            'message': "Successfully disabled auto-sync."
+        }, 200
 
 @login_manager.unauthorized_handler
 def unauthorized_callback():

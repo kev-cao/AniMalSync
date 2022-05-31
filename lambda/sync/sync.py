@@ -28,14 +28,14 @@ def lambda_handler(event, _):
     failures = [] # Messages to redo
 
     for msg in messages:
-        user_id = json.loads(msg['body'])['user_id']
+        user_id = json.loads(json.loads(msg['body'])['Message'])['user_id']
         try:
             user = get_dynamodb_user(
                 user_id=user_id,
                 fields=[
                     'id', 'anilist_user_id', 'email', 'sent_mal_auth_email',
                     'mal_access_token', 'mal_refresh_token', 'email_verified',
-                    'last_sync_timestamp'
+                    'last_sync_timestamp', 'sync_sfn', 'sync_enabled'
                 ]
             ) 
 
@@ -48,6 +48,17 @@ def lambda_handler(event, _):
 
             if 'mal_access_token' not in user or 'mal_refresh_token' not in user:
                 raise MalUnauthorizedException(user_id)
+
+            # Check if there is a running sync step function scheduled. If so, do not sync.
+            # This is to help prevent having multiple SFN's scheduled and syncs happening more than
+            # they should be.
+            if 'sync_sfn' in user:
+                sfn_exec = sfn.describe_execution(executionArn=user['sync_sfn'])
+                if sfn_exec['status'] == 'RUNNING':
+                    continue
+            elif not user['sync_enabled']: # Do not run script if user disabled sync
+                continue
+                
 
             media_entries = anilist.fetch_recently_updated_media(
                 user['anilist_user_id'], user.get('last_sync_timestamp', int(time.time()))
@@ -85,12 +96,22 @@ def lambda_handler(event, _):
                 logger.error(f"[User {user_id}] Failed to update user's last sync time")
 
             # Schedule another sync (if this fails, this message should be processed again)
-            sfn.start_execution(
+            new_sfn_exec = sfn.start_execution(
                 stateMachineArn=os.environ['AWS_SFN_ARN'],
                 input=json.dumps({
                     'user_id': user_id
                 })
             )
+            try:
+                # Save running execution arn
+                update_dynamodb_user(
+                    user_id=user_id,
+                    data={
+                        'sync_sfn': new_sfn_exec['executionArn']
+                    }
+                )
+            except ClientError as e:
+                logger.error(f"[User {user_id}] Failed to save sync SFN arn but continuing execution.")
         except Exception as e:
             logger.error(f"[User {user_id}] Sync process failed: {e}")
             failures.append({
