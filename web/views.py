@@ -442,7 +442,7 @@ def autosync():
                 )
         except ClientError as e:
             app.logger.error((f"[User {current_user.id}] DynamoDB user failure "
-                 f"getting/updating user: {e}"))
+                              f"getting/updating user: {e}"))
 
         try:
             update_dynamodb_user(

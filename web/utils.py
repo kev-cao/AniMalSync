@@ -252,7 +252,8 @@ def schedule_sync(*, user_id, now=False):
         sns = boto3.resource('sns', region_name=app.config['AWS_REGION_NAME'])
         sync_topic = sns.Topic(app.config['AWS_SNS_SYNC_TOPIC'])
         sync_topic.publish(Message=json.dumps({
-            'user_id': user_id
+            'user_id': user_id,
+            'force': True
         }))
     else:
         sfn = boto3.client('stepfunctions')

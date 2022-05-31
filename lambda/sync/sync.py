@@ -31,6 +31,8 @@ def lambda_handler(event, _):
         msg_contents = json.loads(json.loads(msg['body'])['Message'])
         user_id = msg_contents['user_id']
         executing_sfn_arn = msg_contents.get('sfn_exec_arn', None)
+        force = msg_contents.get('force', False)
+
         try:
             user = get_dynamodb_user(
                 user_id=user_id,
@@ -52,12 +54,14 @@ def lambda_handler(event, _):
                 raise MalUnauthorizedException(user_id)
 
             if 'sync_sfn' in user:
-                # Check if there is another executing sfn arn that does not match this one
-                # If there is, don't bother running this one. This will help with avoiding
+                # If this is not a forced execution, check if there is another
+                # executing sfn arn that does not match this one. If there is,
+                # don't bother running this one. This will help with avoiding
                 # too many sfns for the same user.
                 if user['sync_sfn'] != executing_sfn_arn:
-                    logger.info(f"[User {user_id}] Already running SFN found. Stopping execution.")
-                    continue 
+                    if not force:
+                        logger.info(f"[User {user_id}] Already running SFN found. Stopping execution.")
+                        continue 
                 else:
                     # If the saved sync sfn arn is the one that triggered this lambda,
                     # then we can remove it since it's being handled now.
