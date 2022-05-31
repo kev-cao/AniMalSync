@@ -78,16 +78,18 @@ def update_dynamodb_user(*, user_id: str, data: dict):
     query = []
     if to_update:
         query.append(f"SET {','.join(map(lambda kv: f'{kv[0]} = :{kv[0]}', to_update))}")
+        attr_values = { f':{kv[0]}': kv[1] for kv in to_update }
     if to_remove:
         query.append(f"REMOVE {','.join(map(lambda kv: kv[0], to_remove))}")
 
-    attr_values = { f':{kv[0]}': kv[1] for kv in to_update }
+    args = {
+        'Key':{ 'id': user['id'] },
+        'UpdateExpression': ' '.join(query),
+    }
+    if to_update:
+        args['ExpressionAttributeValues'] = attr_values
 
-    user_table.update_item(
-        Key={ 'id': user['id'] },
-        UpdateExpression=' '.join(query),
-        ExpressionAttributeValues=attr_values
-    )
+    user_table.update_item(**args)
 
 def send_mal_authorization_email(*, user: dict, force: bool=False):
     """

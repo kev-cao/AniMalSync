@@ -434,16 +434,21 @@ def autosync():
                         (f"[User {current_user.id}] Failure when "
                          f"cancelling any running SFN: {e}")
                     )
+                update_dynamodb_user(
+                    user_id=current_user.id,
+                    data={
+                        'sync_sfn': None
+                    }
+                )
         except ClientError as e:
-            app.logger.error((f"[User {current_user.id}] Failure looking up user "
-                 "sync SFN: {e}"))
+            app.logger.error((f"[User {current_user.id}] DynamoDB user failure "
+                 f"getting/updating user: {e}"))
 
         try:
             update_dynamodb_user(
                 user_id=current_user.id,
                 data={
                     'sync_enabled': enable,
-                    'sync_sfn': None
                 }
             )
         except ClientError as e:
