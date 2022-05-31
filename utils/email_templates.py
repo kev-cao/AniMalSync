@@ -1,10 +1,6 @@
 import boto3
 import os
 from botocore.exceptions import ClientError
-from dotenv import load_dotenv
-
-basedir = os.path.abspath(os.path.dirname(__file__))
-load_dotenv(os.path.join(basedir, '.env'))
 
 ses = boto3.client('ses', region_name=os.environ['AWS_REGION_NAME'])
 
@@ -35,7 +31,7 @@ except ClientError as e:
     if e.response['Error']['Code'] == 'TemplateDoesNotExist':
         ses.create_template(
             Template={
-                'TemplateName': 'AniMalSync_Email_Verification',
+                'TemplateName': verif_template_name,
                 'SubjectPart': 'AniMalSync Email Verification',
                 'TextPart': verif_text,
                 'HtmlPart': verif_html
@@ -46,9 +42,48 @@ except ClientError as e:
 else:
     ses.update_template(
         Template={
-            'TemplateName': 'AniMalSync_Email_Verification',
+            'TemplateName': verif_template_name,
             'SubjectPart': 'AniMalSync Email Verification',
             'TextPart': verif_text,
             'HtmlPart': verif_html
+        }
+    )
+
+
+# MAL Authorization Template Template
+auth_template_name = 'AniMalSync_MAL_Auth'
+auth_html = """
+<h2>AniMalSync MAL Authorization</h2>
+<p>AniMalSync needs you to authorize the app to access your MyAnimeList account. Please click <a href="{{url}}">this link to authorize the app.</a></p>
+"""
+
+auth_text = """
+AniMalSync needs you to authorize the app to access your MyAnimeList account.
+Please click this link to authorize the app: {{url}}
+"""
+
+try:
+    resp = ses.get_template(
+        TemplateName=auth_template_name
+    )
+except ClientError as e:
+    if e.response['Error']['Code'] == 'TemplateDoesNotExist':
+        ses.create_template(
+            Template={
+                'TemplateName': auth_template_name,
+                'SubjectPart': 'AniMalSync MAL Authorization',
+                'TextPart': auth_text,
+                'HtmlPart': auth_html
+            }
+        )
+    else:
+        raise e
+else:
+    ses.update_template(
+        Template={
+            'TemplateName': auth_template_name,
+            'SubjectPart': 'AniMalSync MAL Authorization',
+            'TextPart': auth_text,
+            'HtmlPart': auth_html
         }
     )

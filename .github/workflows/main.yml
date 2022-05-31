@@ -2,14 +2,12 @@ name: Deploy to AWS Lambda
 on: 
   workflow_dispatch:
   push:
-    branches:
-      - 'master'
     paths:
       - 'lambda/**'
       - '.github/workflows/main.yml'
 jobs:
   auth:
-    name: Build authorization lambda
+    name: Build sync script Lambda
     runs-on: ubuntu-latest
     steps:
       - name: Checkout source code
@@ -19,7 +17,7 @@ jobs:
       - name: Setting up environment
         run: |
           python -m pip install --upgrade pip
-          cd lambda/auth
+          cd lambda/sync
           pip3 install -r requirements.txt -t .
           zip -r lambda-env.zip .
       - name: Deploying to AWS Lambda
@@ -27,11 +25,17 @@ jobs:
         with:
           aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws_region: ${{ secrets.AWS_REGION }}
-          function_name: Anilist-to-MAL-Authorizer
-          zip_file: lambda/auth/lambda-env.zip
+          aws_region: ${{ secrets.AWS_REGION_NAME }}
+          function_name: AniMalSync-Script
+          zip_file: lambda/sync/lambda-env.zip
+          environment: >
+            APP_EMAIL=animalsync.app@gmail.com,
+            LOG_LEVEL=INFO,
+            AWS_USER_DYNAMODB_TABLE=AniMalSync-User-Data,
+            AWS_SYNC_LOG_DYNAMODB_TABLE=AniMalSync-Sync-Log,
+            AWS_SFN_ARN=arn:aws:states:us-east-2:983398483317:stateMachine:AniMalSync-Sync-Publish
   email:
-    name: Build email notification lambda
+    name: Build email MAL authorization Lambda
     runs-on: ubuntu-latest
     steps:
       - name: Checkout source code
@@ -43,6 +47,10 @@ jobs:
         with:
           aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws_region: ${{ secrets.AWS_REGION }}
+          aws_region: ${{ secrets.AWS_REGION_NAME }}
           function_name: MAL-OAuth-Emailer
           source: lambda/email/email_lambda.py
+          environment: >
+            APP_EMAIL=animalsync.app@gmail.com,
+            AUTH_EMAIL_TEMPLATE=AniMalSync_MAL_Auth,
+            AWS_USER_DYNAMODB_TABLE=AniMalSync-UserData

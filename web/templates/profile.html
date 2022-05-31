@@ -22,18 +22,31 @@
             </tr>
             <tr>
                 <td class="col-5"><b>MAL Account</b></td>
-                <td class="col-7 text-success">
-                    {% if mal_authorized %}
-                        <span class="bi bi-check-circle" role="img" aria-label="Success:"></span>
+                <td class="col-7">
+                    <div id="mal-spinner" class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <div id="mal-authorized" class="text-success d-none">
+                        <span class="bi bi-check-circle d-none" role="img" aria-label="Success"></span>
                         Authorized!
-                    {% else %}
-                        <button type="button" class="btn btn-outline-danger">
-                            Click to Authorize
-                        </button>
-                    {% endif %}
+                    </div>
+                    <button id="mal-unauthorized" type="button" class="btn btn-outline-danger d-none">
+                        Click to Authorize
+                    </button>
                 </td>
             </tr>
         </table>
+        <script>
+            $.get("/mal_authorized", function( data ) {
+                const { authorized } = data;
+                $("#mal-spinner").addClass("d-none");
+                if (authorized) {
+                    $("#mal-authorized").removeClass("d-none");
+                } else {
+                    $("#mal-unauthorized").removeClass("d-none");
+                }
+            });
+        </script>
     </div>
 </div>
 {% endblock %}

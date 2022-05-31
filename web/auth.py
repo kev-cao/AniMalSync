@@ -14,7 +14,7 @@ from flask_wtf import FlaskForm, RecaptchaField, Recaptcha
 from flask_wtf.csrf import CSRFProtect
 from wtforms import StringField, EmailField, PasswordField, HiddenField, BooleanField
 from wtforms.validators import InputRequired, Email, ValidationError, EqualTo, Length
-from util import get_dynamodb_user
+from web.utils import get_dynamodb_user
 
 # Setup anti-CSRF protection for WTForms
 csrf = CSRFProtect()

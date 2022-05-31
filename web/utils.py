@@ -76,21 +76,57 @@ def get_dynamodb_user(*, user_id=None, email=None, fields=[]):
     table = dynamodb.Table(app.config['AWS_USER_DYNAMODB_TABLE'])
 
     if user_id is not None:  
-        user = table.get_item(
-            Key={ 'id' : user_id },
-            ProjectionExpression=','.join(fields)
-            )
+        args = { 'KEY': { 'id': user_id } }
+        if projection := ','.join(fields):
+            args['ProjectionExpression'] = projection
+
+        user = table.get_item(**args)
         user = user['Item'] if 'Item' in user else None
     else:
-        users = table.query(
-            IndexName='email-index',
-            Select='SPECIFIC_ATTRIBUTES',
-            KeyConditionExpression=Key('email').eq(email),
-            ProjectionExpression=','.join(fields)
-        )['Items']
+        args = {
+            'IndexName': 'email-index',
+            'Select': 'SPECIFIC_ATTRIBUTES',
+            'KeyConditionExpression': Key('email').eq(email)
+        }
+        if projection := ','.join(fields):
+            args['ProjectionExpression'] = projection
+
+        users = table.query(**args)['Items']
         user = users[0] if users else None
 
     return user
+
+
+def update_dynamodb_user(*, user_id: str, data: dict):
+    """
+    Updates an AniMalSync user with new data.
+
+    Args:
+        user_id (str): The user ID of the user
+        data (dict): The new fields to update
+
+    Raises:
+        (ClientError): Update failed
+    """
+    user = get_dynamodb_user(user_id=user_id)
+
+    # Don't perform update if user does not exist
+    if user is None:
+        return
+
+    dynamodb = boto3.resource(
+        'dynamodb',
+        region_name=app.config['AWS_REGION_NAME']
+    )
+    table = dynamodb.Table(app.config['AWS_USER_DYNAMODB_TABLE'])
+
+    update_expr = f"SET {','.join(map(lambda k: f'{k} = :{k}', data.keys()))}"
+    attr_values = { f':{k}': v for k, v in data.items() }
+    table.update_item(
+        Key={ 'id': user['id'] },
+        UpdateExpression=update_expr,
+        ExpressionAttributeValues=attr_values
+    )
 
 def get_anilist_username(user_id):
     """
@@ -173,18 +209,11 @@ def mal_is_authorized(user):
             app.logger.debug(f"Successfully refreshed MAL token for {user.email}.")
             new_tokens = resp.json()
             try:
-                dynamodb = boto3.resource(
-                    'dynamodb',
-                    region_name=app.config['AWS_REGION_NAME']
-                )
-                table = dynamodb.Table(app.config['AWS_USER_DYNAMODB_TABLE'])
-                table.update_item(
-                    Key={ 'id': user.id },
-                    UpdateExpression=("SET mal_access_token = :access_token, "
-                                    "mal_refresh_token = :refresh_token"),
-                    ExpressionAttributeValues={
-                        ':access_token': new_tokens['access_token'],
-                        ':refresh_token': new_tokens['refresh_token']
+                update_dynamodb_user(
+                    user.id,
+                    {
+                        'mal_access_token': new_tokens['access_token'],
+                        'mal_refresh_token': new_tokens['refresh_token']
                     }
                 )
             except ClientError as e:

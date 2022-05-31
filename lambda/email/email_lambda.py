@@ -2,81 +2,109 @@ import json
 import os
 import boto3
 import secrets
-import time
+from json import JSONDecodeError
+from botocore.exceptions import ClientError
 
-def lambda_handler(event, context):
+def lambda_handler(event, _):
     """
     Sends an email notification to user with MAL OAuth link.
 
     Args:
         event (dict): AWS triggering event
-        context (dict): AWS context
 
     Returns:
         (dict): JSON response to triggering event
     """
     try:
-        user = event['user']
+        user_id = event['user_id']
     except KeyError as e:
         print(e)
         return create_response(400, "Need to provide user to email.")
 
-    # Fetch config file
-    s3 = boto3.client('s3')
-    bucket = 'anilist-to-mal-config'
-    key = 'config.json'
+    # Fetch MAL keys
     try:
-        data = s3.get_object(Bucket=bucket, Key=key)
-        config = json.loads(data['Body'].read())
-    except (s3.exceptions.NoSuchKey, s3.exceptions.InvalidObjectState) as e:
-        print(e)
-        return create_response(500, "The server failed to fetch config.")
-    except JSONDecodeError as e:
-        print(e)
-        return create_response(500, "The config file could not be decoded.")
+        ssm = boto3.client('ssm', region_name=os.environ['AWS_REGION_NAME'])
+        param = ssm.get_parameter(
+            Name='/mal_client/keys',
+            WithDecryption=True
+        ) ['Parameter']['Value']
+        mal_keys = json.loads(param)
+        mal_id = mal_keys['MAL_CLIENT_ID']
+    except (ClientError, JSONDecodeError) as e:
+        msg = f"[User {user_id}] Could not fetch MAL keys."
+        print(f"{msg}: {e}")
+        return create_response(500, msg)
 
+    # Fetch user data
     try:
-        user_email = config['users'][user]['email']
-    except KeyError as e:
-        print(e)
-        return create_response(404, "Could not find user email in config.")
+        dynamodb = boto3.resource(
+            'dynamodb',
+            region_name=os.environ['AWS_REGION_NAME']
+        )
+        table = dynamodb.Table(os.environ['AWS_USER_DYNAMODB_TABLE'])
+        user = table.get_item(
+            Key={ 'id': user_id },
+            ProjectionExpression="email",
+        )['Item']
 
-    mal_id = config['MAL_CLIENT_ID']
-    mal_secret = config['MAL_CLIENT_SECRET']
+        if 'email' not in user:
+            raise KeyError()
+    except (ClientError, KeyError) as e:
+        msg = f"[User {user_id}] Could not fetch user email."
+        print(f"{msg}: {e}")
+        return create_response(500, msg)
 
     # Generate and send email
-    ses = boto3.client('ses', region_name=os.environ['AWS_REGION'])
+    ses = boto3.client('ses', region_name=os.environ['AWS_REGION_NAME'])
     code_challenge = secrets.token_urlsafe(100)[:128]
     auth_url = f"https://myanimelist.net/v1/oauth2/authorize?response_type=code&client_id={mal_id}&code_challenge={code_challenge}&state={user}"
-    print(f"Code Challenge for {user}: {code_challenge}")
+    print(f"[User {user_id}] Code Challenge: {code_challenge}")
 
+    # Add code challenge to DynamoDB
     try:
-        ses.send_email(
-                Destination={
-                    'ToAddresses': [user_email]
-                    },
-                Message={
-                    'Body': {
-                        'Text': {
-                            'Charset': 'UTF-8',
-                            'Data': f"Click this link to authorize Anilist-to-MAL-sync to be able to update your MAL: {auth_url}"
-                            }
-                        },
-                    'Subject': {
-                        'Charset': 'UTF-8',
-                        'Data': "Anilist-to-MAL-Sync Authorization"
-                        }
-                    },
-                Source='defcoding@gmail.com'
-                )
-    except ses.exceptions.MessageRejected as e:
-        print(e)
-        return create_response(500, "Could not send notification email.")
+        table.update_item(
+            Key={ 'id': user_id },
+            UpdateExpression="SET code_verifier = :verifier",
+            ExpressionAttributeValues={
+                ':verifier': code_challenge
+            }
+        )
+    except ClientError as e:
+        msg = f"[User {user_id}] Could not add code challenge to user."
+        print(f"{msg}: {e}")
+        return create_response(500, msg)
 
-    config['users'][user]['code_verifier'] = code_challenge
-    config['users'][user]['last_notified'] = int(time.time())
-    config['users'][user]['auth_failed'] = False
-    s3.put_object(Body=json.dumps(config), Bucket=bucket, Key=key)
+    # Send email
+    try:
+        ses.send_templated_email(
+            Source=os.environ['APP_EMAIL'],
+            Destination={
+                'ToAddresses': [user['email']]
+            },
+            Template=os.environ['AUTH_EMAIL_TEMPLATE'],
+            TemplateData=json.dumps({
+                'url': auth_url
+            })
+        )
+    except ses.exceptions.MessageRejected as e:
+        msg = f"[User {user_id}] Could not send notification email."
+        print(f"{msg}: {e}")
+        return create_response(500, msg)
+
+    # Set dynamo to show that email was sent
+    try:
+        table.update_item(
+            Key={ 'id': user_id },
+            UpdateExpression="SET sent_mal_auth_email = :sent",
+            ExpressionAttributeValues={
+                ':sent': True
+            }
+        )
+    except ClientError as e:
+        msg = f"[User {user_id}] Could not update user to show email was sent"
+        print(f"{msg}: {e}")
+        return create_response(500, msg)
+
     return create_response(200, "Email successfully sent!")
 
 def create_response(code: int, body: str) -> dict:
@@ -97,4 +125,3 @@ def create_response(code: int, body: str) -> dict:
             'statusCode': code,
             'body': body
             }
-

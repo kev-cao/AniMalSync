@@ -1,7 +1,7 @@
 from __future__ import annotations
 import requests
 from textwrap import dedent
-from utils.httpexception import HTTPException
+from utils.exception import HTTPException
 from utils.logger import logger
 
 class AnilistClient:
@@ -13,12 +13,12 @@ class AnilistClient:
         self.session = requests.Session()
         self.api = "https://graphql.anilist.co/"
 
-    def fetch_recently_updated_media(self, username: str, updated_after: int=0) -> list[dict]:
+    def fetch_recently_updated_media(self, user_id: str, updated_after: int=0) -> list[dict]:
         """
         Fetches all recently updated media after a certain date.
 
         Args:
-            username (str): The username of the user to fetch data about
+            user_id (str): The user id of the AniList user to fetch data about
             updated_after (int, optional): Epoch format. Only media that
                 were updated after this timestamp should be shown
 
@@ -32,7 +32,7 @@ class AnilistClient:
         entries = []
 
         while True:
-            entry_page = self.__fetch_recently_updated_media(username, updated_after, curr_page)
+            entry_page = self.__fetch_recently_updated_media(user_id, updated_after, curr_page)
             if entry_page:
                 entries += entry_page
                 curr_page += 1
@@ -41,13 +41,13 @@ class AnilistClient:
 
         return entries
 
-    def __fetch_recently_updated_media(self, username: str, updated_after: int=0, page: int=1, per_page: int=50) -> list[dict]:
+    def __fetch_recently_updated_media(self, user_id: str, updated_after: int=0, page: int=1, per_page: int=50) -> list[dict]:
         """
         Fetches all recently updated media after a certain date for a
         given user by page.
 
         Args:
-            username (str): The username of the user to fetch data about
+            user_id (str): The user id of the AniList user to fetch data about
             updated_after (int, optional): Epoch format. Only media that
                 were updated after this timestamp should be shown
             page (int, optional): Which page of paginated results to fetch
@@ -60,7 +60,7 @@ class AnilistClient:
             HTTPException: Error with API query
         """
         # Fetch first entry of page to see if it is passes the updated_after filter.
-        query = self.__construct_media_list_query(username, page)
+        query = self.__construct_media_list_query(user_id, page)
         resp = self.__make_api_query(query)
         media = resp['data']['Page']['mediaList'][0]
 
@@ -68,7 +68,7 @@ class AnilistClient:
         if media['updatedAt'] <= updated_after:
             return []
 
-        query = self.__construct_media_list_query(username, page, per_page)
+        query = self.__construct_media_list_query(user_id, page, per_page)
         resp = self.__make_api_query(query)
         mediaEntries = resp['data']['Page']['mediaList']
         return list(filter(lambda entry : entry['updatedAt'] > updated_after, mediaEntries))
@@ -95,13 +95,13 @@ class AnilistClient:
         return resp_json
 
     @classmethod
-    def __construct_media_list_query(cls, username: str, page: int=1, per_page: int=1) -> str:
+    def __construct_media_list_query(cls, user_id: int, page: int=1, per_page: int=1) -> str:
         """
         Constructs a GraphQL query to fetch a user's media list from AniList in order of
         last update time.
 
         Args:
-            username (str): The username of the user to fetch data about
+            user_id (int): The user id of the AniList user to fetch data about
             page (int, optional): Which page of paginated results to fetch
             per_page (int, optional): Number of entries per page
 
@@ -111,7 +111,7 @@ class AnilistClient:
         return dedent(f"""\
                 {{
                     Page(page: {page}, perPage: {per_page}) {{
-                        mediaList(userName: "{username}", sort: UPDATED_TIME_DESC) {{
+                        mediaList(userId: {user_id}, sort: UPDATED_TIME_DESC) {{
                             media {{
                                 title {{
                                     romaji

@@ -4,14 +4,15 @@ import boto3
 import secrets
 import json
 import time
+import requests
 from boto3.dynamodb.conditions import Key
 from botocore.exceptions import ClientError
 from flask import abort, redirect, render_template, request, url_for
 from flask_login import current_user, login_user, logout_user, login_required
 from app import app
 from auth import LoginForm, RegisterForm, User, login_manager
-from util import (redirect_back, get_redirect_target, get_dynamodb_user,
-                  get_anilist_username, mal_is_authorized)
+from web.utils import (redirect_back, get_redirect_target, get_dynamodb_user,
+                  update_dynamodb_user, get_anilist_username, mal_is_authorized)
 
 class AuthenticationError(Exception):
     """
@@ -36,11 +37,9 @@ def home():
 @login_required
 def profile():
     anilist_username = get_anilist_username(current_user.anilist_user_id)
-    mal_authorized = mal_is_authorized(current_user)
     return render_template(
         'profile.html',
-        anilist_username=anilist_username,
-        mal_authorized=mal_authorized
+        anilist_username=anilist_username
     )
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -156,21 +155,12 @@ def send_verify():
     try:
         # Generate secret code for verification
         code = secrets.token_urlsafe(32)
-        dynamo = boto3.resource(
-            'dynamodb',
-            region_name=app.config['AWS_REGION_NAME']
-        )
-        table = dynamo.Table(app.config['AWS_USER_DYNAMODB_TABLE'])
-        table.update_item(
-            Key={ 'id': current_user.id },
-            UpdateExpression=("SET verification_code = :code,"
-                                "verification_timestamp = :time"
-                                ),
-            ExpressionAttributeValues={
-                ':code': code,
-                ':time': int(time.time()) # UNIX Epoch
-            },
-            ConditionExpression=Key('id').eq(current_user.id)
+        update_dynamodb_user(
+            current_user.id,
+            {
+                'verification_code': code,
+                'verification_timestamp': int(time.time()) # Unix Epoch
+            }
         )
     except ClientError as e:
         app.logger.error(f"Could not update user with verification data: {e}")
@@ -271,6 +261,68 @@ def verify_email():
                   "using the 'Resend Email' button below."),
             allow_resend=True
         )
+
+@app.route('/mal_authorized', methods=['GET'])
+@login_required
+def mal_authorized():
+    return {
+        'authorized': mal_is_authorized(current_user)
+    }, 200
+
+@app.route('/authorize_mal', methods=['GET'])
+def authorize_mal():
+    user_id = request.args.get('state')
+    auth_code = request.args.get('code')
+
+    user = get_dynamodb_user(
+        id=user_id,
+        fields=['code_verifier']
+    )
+
+    if user is None or 'code_verifier' not in user:
+        return render_template(
+            'mal_auth.html',
+            body="Bad MyAnimeList authorization link."
+        )
+    
+    resp = requests.post("https://myanimelist.net/v1/oauth2/token", data={
+        'client_id': app.config['MAL_CLIENT_ID'],
+        'client_secret': app.config['MAL_CLIENT_SECRET'],
+        'code': auth_code,
+        'code_verifier': user['code_verifier'],
+        'grant_type': 'authorization_code'
+    })
+
+    if not resp.ok:
+        app.logger.warning(f"MAL OAuth failed for user {user_id}: {resp}")
+        return render_template(
+            'mal_auth.html',
+            body=("MyAnimeList authorization failed. Please try again "
+                  "by going to your profile and resending the authorization link.")
+        )
+
+    resp = resp.json()
+    try:
+        update_dynamodb_user(
+            user_id,
+            {
+                'mal_access_token': resp['access_token'],
+                'mal_refresh_token': resp['refresh_token'],
+                'sent_mal_auth_email': False
+            }
+        )
+    except ClientError as e:
+        app.logger.error(f"Could not update user {user_id} with MAL tokens: {e}")
+        return render_template(
+            'mal_auth.html',
+            body=("MyAnimeList authorization failed. Please try again "
+                  "by going to your profile and resending the authorization link.")
+        )
+
+    return render_template(
+        'mal_auth.html',
+        body="MyAnimeList successfully authorized. You may begin syncing."
+    )
 
 @login_manager.unauthorized_handler
 def unauthorized_callback():
