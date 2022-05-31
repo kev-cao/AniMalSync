@@ -210,8 +210,8 @@ def mal_is_authorized(user):
             new_tokens = resp.json()
             try:
                 update_dynamodb_user(
-                    user.id,
-                    {
+                    user_id=user.id,
+                    data={
                         'mal_access_token': new_tokens['access_token'],
                         'mal_refresh_token': new_tokens['refresh_token']
                     }

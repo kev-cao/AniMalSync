@@ -165,8 +165,8 @@ def send_verify():
         # Generate secret code for verification
         code = secrets.token_urlsafe(32)
         update_dynamodb_user(
-            current_user.id,
-            {
+            user_id=current_user.id,
+            data={
                 'verification_code': code,
                 'verification_timestamp': int(time.time()) # Unix Epoch
             }
@@ -313,8 +313,8 @@ def authorize_mal():
     resp = resp.json()
     try:
         update_dynamodb_user(
-            user_id,
-            {
+            user_id=user_id,
+            data={
                 'mal_access_token': resp['access_token'],
                 'mal_refresh_token': resp['refresh_token'],
                 'sent_mal_auth_email': False
