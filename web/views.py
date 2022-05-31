@@ -10,8 +10,9 @@ from botocore.exceptions import ClientError
 from flask import abort, redirect, render_template, request, url_for
 from flask_login import current_user, login_user, logout_user, login_required
 from app import app
-from auth import LoginForm, RegisterForm, User, login_manager
-from web.utils import (redirect_back, get_redirect_target, get_dynamodb_user,
+from auth import User, login_manager
+from forms import LoginForm, RegisterForm, AuthorizeMALForm, AutoSyncForm
+from utils import (redirect_back, get_redirect_target, get_dynamodb_user,
                   update_dynamodb_user, get_anilist_username, mal_is_authorized)
 
 class AuthenticationError(Exception):
@@ -37,9 +38,13 @@ def home():
 @login_required
 def profile():
     anilist_username = get_anilist_username(current_user.anilist_user_id)
+    mal_form = AuthorizeMALForm()
+    sync_form = AutoSyncForm()
     return render_template(
         'profile.html',
-        anilist_username=anilist_username
+        anilist_username=anilist_username,
+        mal_form=mal_form,
+        sync_form=sync_form
     )
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -56,7 +61,9 @@ def login():
             user = get_dynamodb_user(
                 email=form.email.data,
                 fields=[
-                    'id', 'email', 'anilist_user_id', 'email_verified', 'password'
+                    'id', 'email', 'anilist_user_id', 
+                    'email_verified', 'sync_enabled',
+                    'last_sync_timestamp', 'password'
                 ]
             )
         except ClientError as e:
@@ -112,7 +119,8 @@ def register():
             'anilist_user_id': form.anilist_user_id,
             'password': hashed_pwd,
             'email_verified': False,
-            'sync_enabled': False
+            'sync_enabled': False,
+            'last_sync_timestamp': int(time.time())
         }
 
         # Add user to DynamoDB
@@ -276,7 +284,7 @@ def authorize_mal():
     auth_code = request.args.get('code')
 
     user = get_dynamodb_user(
-        id=user_id,
+        user_id=user_id,
         fields=['code_verifier']
     )
 
@@ -324,6 +332,57 @@ def authorize_mal():
         'mal_auth.html',
         body="MyAnimeList successfully authorized. You may begin syncing."
     )
+
+@app.route("/authorize_mal", methods=['POST'])
+@login_required
+def send_mal_auth_email():
+    if mal_is_authorized(current_user):
+        return {
+            'success': False,
+            'message': "You are already authorized! Did not send authorization email."
+        }, 400
+
+    failed = False
+    try: 
+        lambda_client = boto3.client('lambda', region_name=app.config['AWS_REGION_NAME'])
+        resp = lambda_client.invoke(
+            FunctionName=app.config['AWS_EMAIL_LAMBDA'],
+            Payload=json.dumps({
+                'user_id': current_user.id
+            })
+        )
+
+        if resp['StatusCode'] != 200:
+            app.logger.warning(
+                f"Could not send authorization email for user {current_user.id}: {resp}"
+            )
+            failed = True
+    except ClientError as e:
+        app.logger.warning(
+            f"Could not send authorization email for user {current_user.id}: {e}"
+        )
+        failed = True
+
+    if failed:
+        return {
+            'success': False,
+            'message': "Failed to send authorization email. Please try again later."
+        }, 500
+    else:
+        return {
+            'success': True,
+            'message': "Successfully sent MAL authorization email to address on file."
+        }, 200
+
+    
+
+
+@app.route('/autosync', methods=['PATCH'])
+@login_required
+def autosync():
+    is_active = request.form.get('autosync')
+    print(request.form)
+    return { 'success': True }, 200
 
 @login_manager.unauthorized_handler
 def unauthorized_callback():

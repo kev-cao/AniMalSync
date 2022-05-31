@@ -27,26 +27,134 @@
                         <span class="visually-hidden">Loading...</span>
                     </div>
                     <div id="mal-authorized" class="text-success d-none">
-                        <span class="bi bi-check-circle d-none" role="img" aria-label="Success"></span>
+                        <span class="bi bi-check-circle" role="img" aria-label="Success"></span>
                         Authorized!
                     </div>
-                    <button id="mal-unauthorized" type="button" class="btn btn-outline-danger d-none">
-                        Click to Authorize
-                    </button>
+                    <form id="mal-form" class="d-none">
+                        {{ mal_form.csrf_token }}
+                        <button type="submit" id="mal-unauthorized" type="button" class="btn btn-outline-danger">
+                            Click to Authorize
+                        </button>
+                    </form>
+                </td>
+            </tr>
+            <tr>
+                <td class="col-5"><b>Auto-Sync</b></td>
+                <td class="col-7">
+                    <form id="sync-form">
+                        {{ sync_form.csrf_token }}
+                        <button
+                            type="submit"
+                            id="disable-sync-btn"
+                            class="{% if not current_user.sync_enabled %}d-none {% endif %}btn btn-outline-danger"
+                            name="autosync"
+                            value=0
+                        >
+                            Disable
+                        </button>
+                        <button
+                            type="submit"
+                            id="enable-sync-btn"
+                            class="{% if current_user.sync_enabled %}d-none {% endif %} disabled btn btn-outline-secondary text-decoration-line-through"
+                            name="autosync"
+                            value=1
+                        >
+                            Enable 
+                        </button>
+                    </form>
                 </td>
             </tr>
         </table>
-        <script>
-            $.get("/mal_authorized", function( data ) {
-                const { authorized } = data;
-                $("#mal-spinner").addClass("d-none");
-                if (authorized) {
-                    $("#mal-authorized").removeClass("d-none");
-                } else {
-                    $("#mal-unauthorized").removeClass("d-none");
-                }
-            });
-        </script>
+    </div>
+    <div class="toast-container position-fixed bottom-0 end-0 p-3">
+        <div id="toast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="toast-header">
+                <strong class="me-auto">AniMalSync</strong>
+                <small>Alert</small>
+                <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+            <div id="toast-body" class="toast-body">
+            </div>
+        </div>
     </div>
 </div>
+<script>
+    $.get("/mal_authorized", function( data ) {
+        const { authorized } = data;
+        $("#mal-spinner").addClass("d-none");
+        if (authorized) {
+            $("#mal-authorized").removeClass("d-none");
+            $("#enable-sync-btn").removeClass("disabled")
+            $("#enable-sync-btn").removeClass("btn-outline-secondary")
+            $("#enable-sync-btn").removeClass("text-decoration-line-through")
+            $("#enable-sync-btn").addClass("btn-outline-success")
+        } else {
+            $("#mal-form").removeClass("d-none");
+        }
+    });
+
+    // When button is clicked, consider all other buttons in form unclicked and
+    // set this one clicked.
+    // https://stackoverflow.com/questions/5721724/jquery-how-to-get-which-button-was-clicked-upon-form-submission
+    $("button[type=submit]").click(function() {
+        $("button[type=submit]", $(this).parents("form")).removeAttr("clicked");
+        $(this).attr("clicked", "true");
+    })
+
+    // Handler for sync form
+    $("#sync-form").submit(function(e) {
+        e.preventDefault();
+        const form = $(this);
+        const submitBtn = $("button[type=submit][clicked=true]", form).first();
+        const otherBtn = submitBtn.attr("id") === "enable-sync-btn" ? $("#disable-sync-btn") : $("#enable-sync-btn");
+        console.log(otherBtn);
+        let tmpField = $("<input type='hidden' />");
+        tmpField
+            .attr("name", submitBtn.name)
+            .val(submitBtn.val())
+            .appendTo(form);
+
+        $.ajax({
+            type: "PATCH",
+            url: "{{ url_for('autosync') }}",
+            contentType: "application/x-www-form-urlencoded; charset=UTF-8",
+            data: $(this).serialize(),
+            success: function(resp) {
+                $("#toast-body").text(`Successfully ${submitBtn.val() == 1 ? "enabled" : "disabled"} auto-sync.`);
+                submitBtn.addClass("d-none");
+                otherBtn.removeClass("d-none");
+            },
+            error: function(resp) {
+                $("#toast-body").text(`Failed to ${submitBtn.val() == 1 ? "enable" : "disable"} auto-sync. Please try again later.`);
+            },
+            complete: function() {
+                const toast = new bootstrap.Toast($("#toast"));
+                toast.show();
+                submitBtn.blur();
+                tmpField.remove();
+            }
+        })
+    });
+
+    // Handler for MAL auth form
+    $("#mal-form").submit(function(e) {
+        e.preventDefault();
+        $("#mal-spinner").removeClass("d-none");
+        $("#mal-form").addClass("d-none");
+        $.ajax({
+            type: "POST",
+            url: "/authorize_mal",
+            contentType: "application/x-www-form-urlencoded; charset=UTF-8",
+            data: $(this).serialize(),
+            complete: function(resp) {
+                $("#toast-body").text(resp['responseJSON']['message']);
+                const toast = new bootstrap.Toast($("#toast"));
+                toast.show();
+                $("#mal-unauthorized").blur();
+                $("#mal-spinner").addClass("d-none");
+                $("#mal-form").removeClass("d-none");
+            }
+        })
+    });
+</script>
 {% endblock %}

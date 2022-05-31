@@ -8,17 +8,13 @@ import json
 import os
 from json import JSONDecodeError
 from botocore.exceptions import ClientError
-from dotenv import load_dotenv
-
-basedir = os.path.abspath(os.path.dirname(__file__))
-load_dotenv(os.path.join(basedir, '.env'))
-
 
 class Config:
     """
     Base configuration class for Flask application. Contains various environment variables.
     """
     # App Config
+    basedir = os.path.abspath(os.path.dirname(__file__))
     LOG_LEVEL = os.environ['LOG_LEVEL'].upper() \
         if 'LOG_LEVEL' in os.environ else 'INFO'
     LOG_FILE_PATH = os.path.join(
@@ -49,6 +45,7 @@ class Config:
     AWS_SNS_SYNC_TOPIC = 'arn:aws:sns:us-east-2:983398483317:AniMalSync-Sync-Notifier'
     AWS_USER_DYNAMODB_TABLE = 'AniMalSync-User-Data'
     AWS_LOG_DYNAMODB_TABLE = 'AniMalSync-Sync-Log'
+    AWS_EMAIL_LAMBDA = 'AniMalSync-OAuth-Emailer'
 
     VERIF_EMAIL_TEMPLATE = 'AniMalSync_Email_Verification'
 

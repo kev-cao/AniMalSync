@@ -57,7 +57,7 @@ def lambda_handler(event, _):
     # Generate and send email
     ses = boto3.client('ses', region_name=os.environ['AWS_REGION_NAME'])
     code_challenge = secrets.token_urlsafe(100)[:128]
-    auth_url = f"https://myanimelist.net/v1/oauth2/authorize?response_type=code&client_id={mal_id}&code_challenge={code_challenge}&state={user}"
+    auth_url = f"https://myanimelist.net/v1/oauth2/authorize?response_type=code&client_id={mal_id}&code_challenge={code_challenge}&state={user_id}"
     print(f"[User {user_id}] Code Challenge: {code_challenge}")
 
     # Add code challenge to DynamoDB

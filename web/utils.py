@@ -76,7 +76,7 @@ def get_dynamodb_user(*, user_id=None, email=None, fields=[]):
     table = dynamodb.Table(app.config['AWS_USER_DYNAMODB_TABLE'])
 
     if user_id is not None:  
-        args = { 'KEY': { 'id': user_id } }
+        args = { 'Key': { 'id': user_id } }
         if projection := ','.join(fields):
             args['ProjectionExpression'] = projection
 
@@ -200,7 +200,7 @@ def mal_is_authorized(user):
                 'client_id': app.config['MAL_CLIENT_ID'],
                 'client_secret': app.config['MAL_CLIENT_SECRET'],
                 'grant_type': 'refresh_token',
-                'refresh_token': mal_tokens['refresh_token']
+                'refresh_token': mal_tokens['mal_refresh_token']
             }
         )
 
