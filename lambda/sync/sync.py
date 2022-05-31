@@ -28,7 +28,9 @@ def lambda_handler(event, _):
     failures = [] # Messages to redo
 
     for msg in messages:
-        user_id = json.loads(json.loads(msg['body'])['Message'])['user_id']
+        msg_contents = json.loads(json.loads(msg['body'])['Message'])
+        user_id = msg_contents['user_id']
+        executing_sfn_arn = msg_contents.get('sfn_exec_arn', None)
         try:
             user = get_dynamodb_user(
                 user_id=user_id,
@@ -49,14 +51,31 @@ def lambda_handler(event, _):
             if 'mal_access_token' not in user or 'mal_refresh_token' not in user:
                 raise MalUnauthorizedException(user_id)
 
-            # Check if there is a running sync step function scheduled. If so, do not sync.
-            # This is to help prevent having multiple SFN's scheduled and syncs happening more than
-            # they should be.
             if 'sync_sfn' in user:
-                sfn_exec = sfn.describe_execution(executionArn=user['sync_sfn'])
-                if sfn_exec['status'] == 'RUNNING':
-                    continue
-            elif not user['sync_enabled']: # Do not run script if user disabled sync
+                # Check if there is another executing sfn arn that does not match this one
+                # If there is, don't bother running this one. This will help with avoiding
+                # too many sfns for the same user.
+                if user['sync_sfn'] != executing_sfn_arn:
+                    logger.info(f"[User {user_id}] Already running SFN found. Stopping execution.")
+                    continue 
+                else:
+                    # If the saved sync sfn arn is the one that triggered this lambda,
+                    # then we can remove it since it's being handled now.
+                    dynamo = boto3.resource(
+                        'dynamodb',
+                        region_name=os.environ['AWS_REGION_NAME']
+                    )
+                    table = dynamo.Table(os.environ['AWS_USER_DYNAMODB_TABLE'])
+                    table.update_item(
+                        Key={ 'id': user_id },
+                        UpdateExpression="REMOVE sync_sfn"
+                    )
+
+                    # I'm fairly certain this thing has a "fairly consistent" type of thing
+                    # going on. Depending on failure states and whatnot, we could have
+                    # currently running SFNs swap, but I think it's overall ok. Don't @ me though.
+
+            if not user['sync_enabled']: # Do not run script if user disabled sync
                 continue
                 
 
