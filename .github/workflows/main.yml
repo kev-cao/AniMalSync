@@ -48,7 +48,7 @@ jobs:
           aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws_region: ${{ secrets.AWS_REGION_NAME }}
-          function_name: MAL-OAuth-Emailer
+          function_name: AniMalSync-OAuth-Emailer
           source: lambda/email/email_lambda.py
           environment: >
             APP_EMAIL=animalsync.app@gmail.com,
