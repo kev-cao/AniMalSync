@@ -117,7 +117,7 @@ def lambda_handler(event, _):
                 logger.error(f"[User {user_id}] Failed to update user's last sync time")
 
             # Schedule another sync if there is not one already running
-            if user['sync_sfn'] is None:
+            if 'sync_sfn' not in user or user['sync_sfn'] is None:
                 # if this fails, this message should be processed again
                 new_sfn_exec = sfn.start_execution(
                     stateMachineArn=os.environ['AWS_SFN_ARN'],
