@@ -5,7 +5,7 @@ import secrets
 import json
 import time
 import requests
-from boto3.dynamodb.conditions import Key
+from boto3.dynamodb.conditions import Attr, Key
 from botocore.exceptions import ClientError
 from flask import abort, redirect, render_template, request, url_for
 from flask_login import current_user, login_user, logout_user, login_required
@@ -41,9 +41,52 @@ def profile():
     anilist_username = get_anilist_username(current_user.anilist_user_id)
     mal_form = AuthorizeMALForm()
     sync_form = AutoSyncForm()
+
+    dynamo = boto3.resource(
+        'dynamodb',
+        region_name=app.config['AWS_REGION_NAME']
+    )
+
+    try:
+        table = dynamo.Table(app.config['AWS_LOG_DYNAMODB_TABLE'])
+        logs = table.query(
+            IndexName='user_id-timestamp-index',
+            ProjectionExpression=('success,media_type,title,'
+                                  '#st,progress,score,#ts'),
+            KeyConditionExpression=Key('user_id').eq(current_user.id),
+            ExpressionAttributeNames={
+                '#ts': 'timestamp',
+                '#st': 'status'
+            }
+        )['Items'][::-1]
+
+        # Format timestamp from epoch to human readable
+        for log in logs:
+            log['timestamp'] = time.strftime(
+                '%I:%M %p | %m/%d/%Y',
+                time.localtime(int(log['timestamp']))
+            )
+    except ClientError as e:
+        app.logger.error(
+            f"[User {current_user.id}] Failed to fetch sync logs: {e}"
+        )
+        logs = []
+
+
+    log_headers = {
+        'Media Type': 'media_type',
+        'Title': 'title',
+        'Status': 'status',
+        'Progress': 'progress',
+        'Score': 'score',
+        'Timestamp': 'timestamp'
+    }
+
     return render_template(
         'profile.html',
         anilist_username=anilist_username,
+        log_headers=log_headers,
+        logs=logs,
         mal_form=mal_form,
         sync_form=sync_form
     )
@@ -120,8 +163,7 @@ def register():
             'anilist_user_id': form.anilist_user_id,
             'password': hashed_pwd,
             'email_verified': False,
-            'sync_enabled': False,
-            'last_sync_timestamp': int(time.time())
+            'sync_enabled': False
         }
 
         # Add user to DynamoDB

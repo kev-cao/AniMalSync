@@ -29,7 +29,7 @@ class User(UserMixin):
         self.email = db_user['email']
         self.anilist_user_id = db_user['anilist_user_id']
         self.sync_enabled = db_user['sync_enabled']
-        self.last_sync_timestamp = db_user['last_sync_timestamp']
+        self.last_sync_timestamp = db_user.get('last_sync_timestamp', None)
         self.email_verified = db_user['email_verified']
 
     @property
