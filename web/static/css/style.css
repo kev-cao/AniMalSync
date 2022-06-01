@@ -11891,4 +11891,8 @@ nav {
   --bs-btn-disabled-border-color: #212529;
 }
 
+.profile-table tr {
+  height: 45px;
+}
+
 /*# sourceMappingURL=style.css.map */

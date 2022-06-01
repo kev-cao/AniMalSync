@@ -15,7 +15,7 @@
                 Your email must be verified to enable syncing.
             </p>
         {% endif %}
-        <table class="container-sm mx-0" style="max-width:500px">
+        <table class="container-sm mx-0 profile-table" style="max-width:500px">
             <tr>
                 <td class="col-5"><b>AniList User</b></td>
                 <td class="col-7">{{ anilist_username }}</td>
@@ -24,7 +24,7 @@
                 <td class="col-5"><b>MAL Account</b></td>
                 <td class="col-7">
                     <div id="mal-spinner" class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden">Loading...</span>
+                        <span class="visually-hidden">Authorizing...</span>
                     </div>
                     <div id="mal-authorized" class="text-success d-none">
                         <span class="bi bi-check-circle" role="img" aria-label="Success"></span>
@@ -41,6 +41,9 @@
             <tr>
                 <td class="col-5"><b>Auto-Sync</b></td>
                 <td class="col-7">
+                    <div id="sync-spinner" class="spinner-border text-primary d-none" role="status">
+                        <span class="visually-hidden">Updating...</span>
+                    </div>
                     <form id="sync-form">
                         {{ sync_form.csrf_token }}
                         <button
@@ -107,6 +110,11 @@
         const form = $(this);
         const submitBtn = $("button[type=submit][clicked=true]", form).first();
         const otherBtn = submitBtn.attr("id") === "enable-sync-btn" ? $("#disable-sync-btn") : $("#enable-sync-btn");
+
+        // Hide button and replace with spinner
+        submitBtn.addClass("d-none");
+        $("#sync-spinner").removeClass("d-none");
+
         let tmpField = $("<input type='hidden' />")
             .val(submitBtn.val())
             .attr("name", submitBtn.attr("name"));
@@ -118,10 +126,13 @@
             contentType: "application/x-www-form-urlencoded; charset=UTF-8",
             data: form.serialize(),
             success: function(resp) {
-                submitBtn.addClass("d-none");
                 otherBtn.removeClass("d-none");
             },
+            error: function(resp) {
+                submitBtn.removeClass("d-none");
+            },
             complete: function(resp) {
+                $("#sync-spinner").addClass("d-none");
                 $("#toast-body").text(resp['responseJSON']['message']);
                 const toast = new bootstrap.Toast($("#toast"));
                 toast.show();
