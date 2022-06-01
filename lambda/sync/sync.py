@@ -71,6 +71,7 @@ def lambda_handler(event, _):
                             'sync_sfn': None
                         }
                     )
+                    user['sync_sfn'] = None
 
                     # I'm fairly certain this thing has a "fairly consistent" type of thing
                     # going on. Depending on failure states and whatnot, we could have
@@ -115,23 +116,25 @@ def lambda_handler(event, _):
             except ClientError as e:
                 logger.error(f"[User {user_id}] Failed to update user's last sync time")
 
-            # Schedule another sync (if this fails, this message should be processed again)
-            new_sfn_exec = sfn.start_execution(
-                stateMachineArn=os.environ['AWS_SFN_ARN'],
-                input=json.dumps({
-                    'user_id': user_id
-                })
-            )
-            try:
-                # Save running execution arn
-                update_dynamodb_user(
-                    user_id=user_id,
-                    data={
-                        'sync_sfn': new_sfn_exec['executionArn']
-                    }
+            # Schedule another sync if there is not one already running
+            if user['sync_sfn'] is None:
+                # if this fails, this message should be processed again
+                new_sfn_exec = sfn.start_execution(
+                    stateMachineArn=os.environ['AWS_SFN_ARN'],
+                    input=json.dumps({
+                        'user_id': user_id
+                    })
                 )
-            except ClientError as e:
-                logger.error(f"[User {user_id}] Failed to save sync SFN arn but continuing execution.")
+                try:
+                    # Save running execution arn
+                    update_dynamodb_user(
+                        user_id=user_id,
+                        data={
+                            'sync_sfn': new_sfn_exec['executionArn']
+                        }
+                    )
+                except ClientError as e:
+                    logger.error(f"[User {user_id}] Failed to save sync SFN arn but continuing execution.")
         except Exception as e:
             logger.error(f"[User {user_id}] Sync process failed: {e}")
             failures.append({
