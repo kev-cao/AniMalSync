@@ -1,6 +1,7 @@
 import boto3
 import requests
 import json
+import bcrypt
 from botocore.exceptions import ClientError
 from boto3.dynamodb.conditions import Key
 from app import app
@@ -263,3 +264,19 @@ def schedule_sync(*, user_id, now=False):
                 'user_id': user_id
             })
         )
+
+def hash_password(password):
+    """
+    Hashes the provided password using the app secret key and bcrypt.
+
+    Args:
+        password (str): The password to hash
+
+    Returns:
+        (str): The hashed result
+    """
+    # Generate salt and hash password
+    # https://stackabuse.com/hashing-passwords-in-python-with-bcrypt/
+    salt = bcrypt.gensalt()
+    peppered_pass = password + app.config['SECRET_KEY']
+    return bcrypt.hashpw(peppered_pass.encode('utf-8'), salt).decode('utf-8')

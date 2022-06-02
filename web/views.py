@@ -1,26 +1,21 @@
 import uuid
-import bcrypt
 import boto3
 import secrets
 import json
 import time
 import requests
-from boto3.dynamodb.conditions import Attr, Key
+from urllib import parse as url_parse
+from boto3.dynamodb.conditions import Key
 from botocore.exceptions import ClientError
 from flask import abort, redirect, render_template, request, url_for
 from flask_login import current_user, login_user, logout_user, login_required
+from flask_wtf import FlaskForm
 from app import app
-from auth import User, login_manager
-from forms import LoginForm, RegisterForm, AuthorizeMALForm, AutoSyncForm
-from utils import (redirect_back, get_redirect_target, get_dynamodb_user,
+from auth import User, login_manager, verify_password
+from forms import ChangeAniListUsernameForm, ChangeEmailForm, ChangePasswordForm, ForgotPasswordForm, LoginForm, RegisterForm, ResetPasswordForm
+from utils import (hash_password, redirect_back, get_redirect_target, get_dynamodb_user,
                   update_dynamodb_user, get_anilist_username, mal_is_authorized,
                   schedule_sync)
-
-class AuthenticationError(Exception):
-    """
-    Exception class for when user fails authentication.
-    """
-    pass
 
 class InvalidVerificationError(Exception):
     """
@@ -39,8 +34,12 @@ def home():
 @login_required
 def profile():
     anilist_username = get_anilist_username(current_user.anilist_user_id)
-    mal_form = AuthorizeMALForm()
-    sync_form = AutoSyncForm()
+    mal_form = FlaskForm()
+    sync_form = FlaskForm()
+    email_form = ChangeEmailForm()
+    password_form = ChangePasswordForm()
+    anilist_form = ChangeAniListUsernameForm()
+    unauth_mal_form = FlaskForm()
 
     dynamo = boto3.resource(
         'dynamodb',
@@ -82,13 +81,26 @@ def profile():
         'Timestamp': 'timestamp'
     }
 
+    if current_user.last_sync_timestamp:
+        last_sync = time.strftime(
+            '%I:%M %p | %m/%d/%Y',
+            time.localtime(int(current_user.last_sync_timestamp))
+        )
+    else:
+        last_sync = "Never"
+
     return render_template(
         'profile.html',
         anilist_username=anilist_username,
         log_headers=log_headers,
+        last_sync=last_sync,
         logs=logs,
         mal_form=mal_form,
-        sync_form=sync_form
+        sync_form=sync_form,
+        email_form=email_form,
+        password_form=password_form,
+        anilist_form=anilist_form,
+        unauth_mal_form=unauth_mal_form
     )
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -100,44 +112,18 @@ def login():
     next_target = get_redirect_target()
     form = LoginForm()
     if form.validate_on_submit():
-        # Fetch corresponding user to email from database
-        try:
-            user = get_dynamodb_user(
-                email=form.email.data,
-                fields=[
-                    'id', 'email', 'anilist_user_id', 
-                    'email_verified', 'sync_enabled',
-                    'last_sync_timestamp', 'password'
-                ]
-            )
-        except ClientError as e:
-            app.logger.error(
-                f"Failed to fetch user from DynamoDB during login: {e}"
-            )
-            form.errors_field.errors.append(
-                "An issue occurred on the server. Please try again later."
-            )
+        result = verify_password(form.email.data, form.password.data)
 
-        # Authenticate user login
-        try:
-            if not user: 
-                raise AuthenticationError()
-
-            peppered_password = form.password.data + app.config['SECRET_KEY']
-            if not bcrypt.checkpw(
-                peppered_password.encode('utf-8'),
-                user['password'].encode('utf-8')
-            ):
-                raise AuthenticationError()
-            
-            # Password authentication succeeded
-            login_user(User(user), remember=form.remember_me.data, force=True)
-        except AuthenticationError:
-            form.errors_field.errors.append(
-                "Login failed. Incorrect email or password."
-            )
-        else:
+        if result.ok:
+            login_user(User(result.user), remember=form.remember_me.data, force=True)
             return redirect_back(fallback='home')
+        else:
+            if result.code == 401:
+                msg = "Login failed. Incorrect email or password."
+            else:
+                msg = "An issue occurred on the server. Please try again later."
+            form.errors_field.errors.append(msg)
+
 
     return render_template('login.html', form=form, next=next_target)
 
@@ -149,13 +135,9 @@ def register():
 
     form = RegisterForm()
     if form.validate_on_submit():
-        # Generate salt and hash password
-        # https://stackabuse.com/hashing-passwords-in-python-with-bcrypt/
-        salt = bcrypt.gensalt()
-        peppered_pass = form.password.data + app.config['SECRET_KEY']
-        hashed_pwd = bcrypt.hashpw(peppered_pass.encode('utf-8'), salt).decode('utf-8')
-
+        hashed_pwd = hash_password(form.password.data)
         user_id = str(uuid.uuid4())
+
         # Dynamo item
         user = {
             'id': user_id,
@@ -197,6 +179,9 @@ def logout():
     logout_user()
     return redirect_back(fallback='home')
 
+# So technically, I shouldn't do a "send email" operation like
+# this using GET. However, I also shouldn't eat a double stacked
+# extra cheese bacon cheeseburger, but here I am.
 @app.route('/verify', methods=['GET'])
 @login_required
 def send_verify():
@@ -224,7 +209,8 @@ def send_verify():
     # Generate and send email
     try:
         ses = boto3.client('ses', region_name=app.config['AWS_REGION_NAME'])
-        verif_url = f"{request.host_url}/verification?email={current_user.email}&code={code}"
+        urlsafe_email = url_parse.quote_plus(current_user.email)
+        verif_url = f"{request.host_url}/verification?email={urlsafe_email}&code={code}"
         ses.send_templated_email(
             Source=app.config['APP_EMAIL'],
             Destination={
@@ -266,7 +252,8 @@ def verify_email():
         )
 
         curr_time = int(time.time()) 
-        if code != user['verification_code']:
+        if not user or 'verification__code' not in user \
+                or code != user['verification_code']:
             raise InvalidVerificationError()
         elif curr_time - user['verification_timestamp'] > 60 * 5:
             app.logger.debug(f"Expired verification link for {email}")
@@ -414,20 +401,23 @@ def send_mal_auth_email():
         }, 200
 
     
-
-
 @app.route('/autosync', methods=['PATCH'])
 @login_required
 def autosync():
     enable = bool(int(request.form.get('autosync')))
-    
-    if enable and not mal_is_authorized(current_user):
-        return {
-            'success': False,
-            'message': "Your MAL account must be authorized before you can enable syncing."
-        }, 401
-    
+
     if enable:
+        if not mal_is_authorized(current_user):
+            return {
+                'success': False,
+                'message': "Your MAL account must be authorized before you can enable syncing."
+            }, 401
+        elif not current_user.is_active:
+            return {
+                'success': False,
+                'message': "Your email address on file must be verified before you can enable syncing."
+            }, 401
+
         try:
             schedule_sync(user_id=current_user.id, now=True)
         except ClientError as e:
@@ -454,7 +444,7 @@ def autosync():
         return {
             'success': True,
             'message': "Successfully scheduled sync and enabled auto-sync."
-        }, 200
+        }, 201
     else:
         sfn = boto3.client('stepfunctions')
         try:
@@ -505,7 +495,268 @@ def autosync():
         return {
             'success': True,
             'message': "Successfully disabled auto-sync."
-        }, 200
+        }, 201
+
+@app.route('/change_email', methods=['PATCH'])
+@login_required
+def change_email():
+    email_form = ChangeEmailForm()
+    status = 400
+
+    if email_form.validate():
+        result = verify_password(
+            current_user.email,
+            email_form.password.data
+        )
+        if result.ok:
+            try:
+                new_email = email_form.email.data
+                update_dynamodb_user(
+                    user_id=current_user.id,
+                    data={
+                        'email': new_email,
+                        'email_verified': False,
+                        'sync_enabled': False
+                    }
+                )
+                current_user.email = new_email
+                return { 'success': True }, 201
+            except ClientError as e:
+                app.logger.error(
+                    f"[User {current_user.id}] AWS error when updating email: {e}"
+                )
+                email_form.errors_field.errors.append(
+                    "An issue occurred on the server. Please try again later."
+                )
+                status = 500
+        else:
+            email_form.errors_field.errors.append("Incorrect password.")
+            status = 401
+
+    return render_template('change_email_modal.html', email_form=email_form), status
+
+@app.route('/change_password', methods=['PATCH'])
+@login_required
+def change_password():
+    password_form = ChangePasswordForm()
+    status = 400
+
+    if password_form.validate():
+        result = verify_password(
+            current_user.email,
+            password_form.password.data
+        )
+
+        if result.ok:
+            new_password = password_form.new_password.data
+            if new_password == password_form.password.data:
+                password_form.errors_field.errors.append(
+                    "You have entered the same password as your current password."
+                )
+            else:
+                try:
+                    hashed_pass = hash_password(password_form.new_password.data)
+                    update_dynamodb_user(
+                        user_id=current_user.id,
+                        data={
+                            'password': hashed_pass
+                        }
+                    )
+                    return {
+                        'success': True,
+                        'message': "Successfully changed password."
+                    }, 201
+                except ClientError as e:
+                    app.logger.error(
+                        f"[User {current_user.id}] AWS error when updating password: {e}"
+                    )
+                    password_form.errors_field.errors.append(
+                        "An issue occurred on the server. Please try again later."
+                    )
+                    status = 500
+        else:
+            password_form.password.errors.append("Incorrect password.")
+            status = 401
+    
+    return render_template('change_password_modal.html', password_form=password_form), status
+
+@app.route('/change_anilist', methods=['PATCH'])
+@login_required
+def change_anilist():
+    anilist_form = ChangeAniListUsernameForm()
+    status = 404
+    if anilist_form.validate():
+        if anilist_form.anilist_user_id == current_user.anilist_user_id:
+            anilist_form.anilist_user.errors.append(
+                "AniList username already connected to this account."
+            )
+            status = 400
+        else:
+            try:
+                update_dynamodb_user(
+                    user_id=current_user.id,
+                    data={
+                        'anilist_user_id': anilist_form.anilist_user_id
+                    }
+                )
+                current_user.anilist_user_id = anilist_form.anilist_user_id
+                return {
+                    'success': True,
+                    'anilist_username': anilist_form.anilist_user.data,
+                    'message': "Successfully connected to new AniList user."
+                }, 201
+            except ClientError as e:
+                app.logger.error(
+                    f"[User {current_user.id}] AWS error while updating AniList user: {e}"
+                )
+                status = 500 
+
+    return render_template('change_anilist_modal.html', anilist_form=anilist_form), status
+
+@app.route('/unauthorize_mal', methods=['PATCH'])
+@login_required
+def unauthorize_mal():
+    try:
+        update_dynamodb_user(
+            user_id=current_user.id,
+            data={
+                'mal_access_token': None,
+                'mal_refresh_token': None,
+                'sync_enabled': False
+            }
+        )
+
+        return {
+            'success': True,
+            'message': "Successfully removed MAL credentials from AniMalSync and disabled syncing."
+        }, 201
+    except ClientError as e:
+        app.logger.error(f"[User {current_user.id}] AWS error while unauthorizing MAL: {e}")
+        return {
+            'success': False,
+            'message': "An issue occurred on the server. Please try again later."
+        }, 500
+
+@app.route('/forgot_password', methods=['GET', 'POST'])
+def forgot_password():
+    # Do not allow logged in users to access this page
+    if current_user.is_authenticated:
+        return redirect(url_for('home'))
+    sent_email = False
+
+    form = ForgotPasswordForm()
+    if form.validate_on_submit():
+        email = form.email.data
+        try:
+            user = get_dynamodb_user(
+                email=email,
+                fields=['id']
+            )
+
+            if not user:
+                sent_email = True # Do not allow user to know that no account was found
+            else:
+                code = secrets.token_urlsafe(32)
+                update_dynamodb_user(
+                    user_id=user['id'],
+                    data={
+                        'reset_password_code': code,
+                        'reset_password_timestamp': int(time.time())
+                    }
+                )
+                urlsafe_email = url_parse.quote_plus(email)
+                reset_url = f"{request.host_url}/reset_password?email={urlsafe_email}&code={code}"
+                ses = boto3.client('ses', region_name=app.config['AWS_REGION_NAME'])
+                ses.send_templated_email(
+                    Source=app.config['APP_EMAIL'],
+                    Destination={
+                        'ToAddresses': [email]
+                    },
+                    Template=app.config['RESET_PASSWORD_EMAIL_TEMPLATE'],
+                    TemplateData=json.dumps({
+                        'url': reset_url
+                    })
+                )
+                app.logger.info(f"Sent password reset email to {email}.")
+                sent_email = True
+        except ClientError as e:
+            app.logger.error(
+                f"[User {current_user.id}] AWS error while sending reset email: {e}"
+            )
+            form.errors_field.errors.append(
+                "An issue occurred on the server. Please try again later."
+            )
+            sent_email = False
+    return render_template('forgot_password.html', form=form, sent_email=sent_email)
+
+@app.route('/reset_password', methods=['GET', 'POST'])
+def reset_password():
+    # Do not allow logged in users to access this page
+    if current_user.is_authenticated:
+        return redirect(url_for('home'))
+
+    form = ResetPasswordForm()
+    # If this is a GET request, check if reset link is valid
+    if request.method == 'GET':
+        email = request.args.get('email')
+        code = request.args.get('code')
+        try:
+            user = get_dynamodb_user(
+                email=email,
+                fields=['id', 'reset_password_code', 'reset_password_timestamp']
+            )
+
+            curr_time = int(time.time())
+            if not user or 'reset_password_code' not in user \
+                    or code != user['reset_password_code']:
+                return render_template(
+                    'reset_password.html',
+                    valid_link=False,
+                    invalid_msg="Password reset link is invalid."
+                )
+            elif curr_time - user['reset_password_timestamp'] > 60 * 5:
+                app.logger.debug(f"Expired password reset link for {email}")
+                return render_template(
+                    'reset_password.html',
+                    valid_link=False,
+                    invalid_msg="Password reset link has expired."
+                )
+            
+            form.user_id_field.data = user['id']
+            print(form.user_id_field.data)
+        except ClientError as e:
+            app.logger.error(
+                f"AWS error while checking validity of password reset link: {e}"
+            )
+            return render_template(
+                'reset_password.html',
+                valid_link=False,
+                invalid_msg="An issue occurred on the server. Please try again later."
+            )
+
+    if form.validate_on_submit():
+        try:
+            user_id = form.user_id_field.data
+            print(user_id)
+            hashed_pass = hash_password(form.password.data)
+            update_dynamodb_user(
+                user_id=user_id,
+                data={
+                    'password': hashed_pass
+                }
+            )
+            return redirect(url_for('home'))
+        except ClientError as e:
+            app.logger.error(
+                f"[User {user_id}] AWS error while resetting new password: {e}"
+            )
+            form.errors_field.errors.append(
+                "An error occurred on the server. Please try again later."
+            )
+
+    return render_template('reset_password.html', valid_link=True, form=form)
+    
+
 
 @login_manager.unauthorized_handler
 def unauthorized_callback():

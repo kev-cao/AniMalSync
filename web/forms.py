@@ -178,7 +178,7 @@ class RegisterForm(FlaskForm):
     ])
     confirm_password = PasswordField('Confirm Password', validators=[
         InputRequired(),
-        EqualTo('password', message="Passwords must match")
+        EqualTo('password', message="Passwords must match.")
     ])
     access_code = StringField('Access Code', validators=[
         InputRequired(), AccessCodeValidator('email')
@@ -190,8 +190,80 @@ class RegisterForm(FlaskForm):
     remember_me = BooleanField('Remember Me')
     errors_field = HiddenField("Errors")
 
-class AuthorizeMALForm(FlaskForm):
-    pass
+class ForgotPasswordForm(FlaskForm):
+    """
+    Forgot password form for app.
+    """
+    email = EmailField('Email', validators=[
+        InputRequired(),
+        Email(check_deliverability=True)
+    ])
+    errors_field = HiddenField("Errors")
 
-class AutoSyncForm(FlaskForm):
-    pass
+class ResetPasswordForm(FlaskForm):
+    """
+    Reset password form for app.
+    """
+    password = PasswordField(
+        'New Password',
+        validators=[
+            InputRequired(),
+            Length(max=60),
+            StrongPasswordValidator(
+                requireLength=True, requireChars=True,
+                requireBothCase=True, requireNums=True
+            )
+        ]
+    )
+    confirm_password = PasswordField('Confirm New Password', validators=[
+        InputRequired(),
+        EqualTo('password', message="Passwords must match.")
+    ])
+    user_id_field = HiddenField("User ID")
+    errors_field = HiddenField("Errors")
+
+class ChangeEmailForm(FlaskForm):
+    """
+    Change email form for profile page.
+    """
+    email = EmailField('New Email', validators=[
+        InputRequired(),
+        Email(check_deliverability=True),
+        EmailUniquenessValidator()
+    ])
+    password = PasswordField('Password', validators=[InputRequired()])
+    errors_field = HiddenField("Errors")
+
+class ChangePasswordForm(FlaskForm):
+    """
+    Change password form for profile page.
+    """
+    password = PasswordField('Old Password', validators=[InputRequired()])
+    new_password = PasswordField(
+        'New Password',
+        validators=[
+            InputRequired(),
+            Length(max=60),
+            StrongPasswordValidator(
+                requireLength=True, requireChars=True,
+                requireBothCase=True, requireNums=True
+            )
+        ]
+    )
+    confirm_new_password = PasswordField(
+        'Confirm New Password',
+        validators=[
+            InputRequired(),
+            EqualTo('new_password', message="Passwords must match.")
+        ]
+    )
+    errors_field = HiddenField("Errors")
+
+class ChangeAniListUsernameForm(FlaskForm):
+    """
+    Change AniList username form for profile page.
+    """
+    anilist_user = StringField('New AniList Username', validators=[
+        InputRequired(),
+        AniListUserValidator()
+    ])

@@ -48,6 +48,7 @@ class Config:
     AWS_EMAIL_LAMBDA = 'AniMalSync-OAuth-Emailer'
     AWS_SFN_SYNC = 'arn:aws:states:us-east-2:983398483317:stateMachine:AniMalSync-Sync-Publish'
     VERIF_EMAIL_TEMPLATE = 'AniMalSync_Email_Verification'
+    RESET_PASSWORD_EMAIL_TEMPLATE = 'AniMalSync_MAL_Reset_Password'
 
     # Fetch app keys
     ssm = boto3.client('ssm', region_name=AWS_REGION_NAME)

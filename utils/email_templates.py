@@ -87,3 +87,46 @@ else:
             'HtmlPart': auth_html
         }
     )
+
+
+# Reset Password Template
+reset_password_template_name = 'AniMalSync_MAL_Reset_Password'
+reset_password_html = """
+<h2>AniMalSync Password Reset</h2>
+<p>We received a request to reset the password for your account. To reset your password, click <a href="{{url}}">this link.</a></p>
+<br />
+<p>If you did not request this reset, you may disregard this email.</p>
+"""
+
+reset_password_text = """
+AniMalSync received a request to reset the password for your account. To reset your password, please click this link: {{url}}.
+
+
+If you did not request this reset, you may disregard this email.
+"""
+
+try:
+    resp = ses.get_template(
+        TemplateName=reset_password_template_name
+    )
+except ClientError as e:
+    if e.response['Error']['Code'] == 'TemplateDoesNotExist':
+        ses.create_template(
+            Template={
+                'TemplateName': reset_password_template_name,
+                'SubjectPart': 'AniMalSync Password Reset',
+                'TextPart': reset_password_text,
+                'HtmlPart': reset_password_html
+            }
+        )
+    else:
+        raise e
+else:
+    ses.update_template(
+        Template={
+            'TemplateName': reset_password_template_name,
+            'SubjectPart': 'AniMalSync Password Reset',
+            'TextPart': reset_password_text,
+            'HtmlPart': reset_password_html
+        }
+    )

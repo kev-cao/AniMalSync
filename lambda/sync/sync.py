@@ -79,7 +79,6 @@ def lambda_handler(event, _):
 
             if not user['sync_enabled']: # Do not run script if user disabled sync
                 continue
-                
 
             media_entries = anilist.fetch_recently_updated_media(
                 user['anilist_user_id'], user.get('last_sync_timestamp', int(time.time()))

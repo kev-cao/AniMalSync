@@ -1,0 +1,57 @@
+<div class="modal fade" id="unauth-mal-modal" tabindex="-1" aria-labelledby="mal-modal-label">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="mal-modal-label">Unauthorize MAL Account</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                This will unauthorize your current MAL account and disable syncing. You will need to reauthorize
+                to enable syncing again.
+                <br />
+                Are you sure you want to continue?
+            </div>
+            <div class="modal-footer">
+                <button id="unauth-mal-close-btn" type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <div id="unauth-mal-spinner" class="spinner-border text-primary d-none" role="status">
+                    <span class="visually-hidden">Updating...</span>
+                </div>
+                <form id="unauth-mal-form">
+                    {{ unauth_mal_form.csrf_token }}
+                    <button type="submit" class="btn btn-primary">Yes</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+    $("#unauth-mal-form").submit(function (e) {
+        e.preventDefault();
+        const submitBtn = $("#unauth-mal-form button[type=submit]");
+        const spinner = $("#unauth-mal-spinner");
+        submitBtn.addClass("d-none");
+        spinner.removeClass("d-none");
+        $.ajax({
+            type: "PATCH",
+            url: "{{ url_for('unauthorize_mal') }}",
+            contentType: "application/x-www-form-urlencoded; charset=UTF-8",
+            data: $(this).serialize(),
+            success: function (resp) {
+                checkMalAuthorization();
+                submitBtn.removeClass("d-none");
+                spinner.addClass("d-none");
+                $("#enable-sync-btn").removeClass("d-none");
+                $("#disable-sync-btn").addClass("d-none");
+                $("#unauth-mal-close-btn").click();
+            },
+            completion: function (resp) {
+                $("#toast-body").text(resp['message']);
+                const toast = new bootstrap.Toast($("#toast"));
+                toast.show();
+                submitBtn.blur();
+                submitBtn.removeClass("d-none");
+                spinner.addClass("d-none");
+            }
+        });
+    });
+</script>

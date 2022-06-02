@@ -2,144 +2,184 @@
 
 {% extends "base.html" %}
 {% set active_page = "profile" %}
+{% from "_macros.html" import render_toast %}
 
 {% block body %}
-<div class="container-md mt-3">
-    <h2>Profile</h2>
-    <div>
-        {% if not current_user.is_active %}
-            <a class="btn btn-outline-danger" href="/verify" role="button">
-                Verify Email
-            </a>
-            <p class="text-muted d-inline-block mx-2">
-                Your email must be verified to enable syncing.
-            </p>
-        {% endif %}
-        <table class="container-sm mx-0 profile-table" style="max-width:500px">
-            <tr>
-                <td class="col-5"><b>AniList User</b></td>
-                <td class="col-7">{{ anilist_username }}</td>
-            </tr>
-            <tr>
-                <td class="col-5"><b>MAL Account</b></td>
-                <td class="col-7">
-                    <div id="mal-spinner" class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden">Authorizing...</span>
-                    </div>
-                    <div id="mal-authorized" class="text-success d-none">
-                        <span class="bi bi-check-circle" role="img" aria-label="Success"></span>
-                        Authorized!
-                    </div>
-                    <form id="mal-form" class="d-none">
-                        {{ mal_form.csrf_token }}
-                        <button type="submit" id="mal-unauthorized" type="button" class="btn btn-outline-danger">
-                            Click to Authorize
-                        </button>
-                    </form>
-                </td>
-            </tr>
-            <tr>
-                <td class="col-5"><b>Auto-Sync</b></td>
-                <td class="col-7">
-                    <div id="sync-spinner" class="spinner-border text-primary d-none" role="status">
-                        <span class="visually-hidden">Updating...</span>
-                    </div>
-                    <form id="sync-form">
-                        {{ sync_form.csrf_token }}
-                        <button
-                            type="submit"
-                            id="disable-sync-btn"
-                            class="{% if not current_user.sync_enabled %}d-none {% endif %}btn btn-outline-danger"
-                            name="autosync"
-                            value=0
-                        >
-                            Disable
-                        </button>
-                        <button
-                            type="submit"
-                            id="enable-sync-btn"
-                            class="{% if current_user.sync_enabled %}d-none {% endif %} disabled btn btn-outline-secondary text-decoration-line-through"
-                            name="autosync"
-                            value=1
-                        >
-                            Enable 
-                        </button>
-                    </form>
-                </td>
-            </tr>
-        </table>
-    </div>
-    <br />
-    <hr />
-    <br />
-    <h2>Sync Logs</h2>
-    <div class="table-responsive">
-        <table class="table table-hover">
-            <thead>
+{{ render_toast("AniMalSync", "Alert") }}
+<div class="card container-sm mt-3 text-bg-light">
+    <div class="card-body">
+        <div>
+            <h2 class="d-inline-block">Profile</h2>
+            <div class="dropdown float-end">
+                <button
+                    id="settings-btn"
+                    class="btn btn-outline-secondary dropdown-toggle"
+                    type="button"
+                    data-bs-toggle="dropdown"
+                    aria-expanded="false"
+                >
+                    <span class="bi bi-gear-fill" role="img" aria-label="Settings">
+                    </span>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-lg-end" aria-labelledby="settings-btn">
+                    <li class="dropdown-item" data-bs-toggle="modal" data-bs-target="#change-email-modal">Change Email</li>
+                    <li class="dropdown-item" data-bs-toggle="modal" data-bs-target="#change-password-modal">Change Password</li>
+                    <li class="dropdown-item" data-bs-toggle="modal" data-bs-target="#change-anilist-modal">Change AniList Username</li>
+                    <li class="dropdown-item" data-bs-toggle="modal" data-bs-target="#unauth-mal-modal">Remove MAL Account</li>
+                </ul>
+            </div>
+        </div>
+        {% include "change_email_modal.html" %}
+        {% include "change_password_modal.html" %}
+        {% include "change_anilist_modal.html" %}
+        {% include "change_mal_modal.html" %}
+        <div>
+            {% if not current_user.is_active %}
+                <a class="btn btn-outline-danger" href="/verify" role="button">
+                    Verify Email
+                </a>
+                <p class="text-muted d-inline-block mx-2">
+                    Your email must be verified to enable syncing.
+                </p>
+            {% endif %}
+            <table class="container-sm mx-0 profile-table" style="max-width:500px">
                 <tr>
-                    <th scope="col">
-                        Sync Status
-                    </th>
-                    {% for field in log_headers.keys() %}
-                        <th scope="col">
-                            {{ field }}
-                        </th>
-                    {% endfor %}
+                    <td class="col-5"><b>Email Address</b></td>
+                    <td class="col-7">{{ current_user.email }}</td>
                 </tr>
-            </thead>
-            <tbody>
-                {% for log in logs %}
+                <tr>
+                    <td class="col-5"><b>AniList User</b></td>
+                    <td id="anilist-username" class="col-7">{{ anilist_username }}</td>
+                </tr>
+                <tr>
+                    <td class="col-5"><b>MAL Account</b></td>
+                    <td class="col-7">
+                        <div id="mal-spinner" class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Authorizing...</span>
+                        </div>
+                        <div id="mal-authorized" class="text-success d-none">
+                            <span class="bi bi-check-circle" role="img" aria-label="Success"></span>
+                            Authorized!
+                        </div>
+                        <form id="mal-form" class="d-none">
+                            {{ mal_form.csrf_token }}
+                            <button type="submit" id="mal-unauthorized" type="button" class="btn btn-outline-danger">
+                                Click to Authorize
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="col-5"><b>Auto-Sync</b></td>
+                    <td class="col-7">
+                        <div id="sync-spinner" class="spinner-border text-primary d-none" role="status">
+                            <span class="visually-hidden">Updating...</span>
+                        </div>
+                        <form id="sync-form">
+                            {{ sync_form.csrf_token }}
+                            <button
+                                type="submit"
+                                id="disable-sync-btn"
+                                class="{% if not current_user.sync_enabled %}d-none {% endif %}btn btn-outline-danger"
+                                name="autosync"
+                                value=0
+                            >
+                                Disable
+                            </button>
+                            <button
+                                type="submit"
+                                id="enable-sync-btn"
+                                class="{% if current_user.sync_enabled %}d-none {% endif %} disabled btn btn-outline-secondary text-decoration-line-through"
+                                name="autosync"
+                                value=1
+                            >
+                                Enable 
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+            </table>
+        </div>
+        <br />
+        <hr />
+        <br />
+        <div class="d-flex flex-wrap align-items-center">
+            <h2 class="me-auto">Sync Logs</h2>
+            <small class="text-muted">Last Sync: {{ last_sync }}</small>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
                     <tr>
-                        <th scope="row">
-                            {% if log['success'] %}
-                                <span class="bi bi-check-circle-fill text-success" role="img" aria-label="Success"></span>
-                            {% else %}
-                                <span class="bi bi-x-circle-fill text-danger" role="img" aria-label="Fail"></span>
-                            {% endif %}
+                        <th scope="col">
+                            Sync Status
                         </th>
-                        {% for field in log_headers.values() %}
-                            {% if field == 'title' %}
-                                <td class="text-truncate" style="max-width: 250px">
-                                    {{ log[field] }}
-                                </td>
-                            {% else %}
-                                <td>{{ log[field] }}</td>
-                            {% endif %}
+                        {% for field in log_headers.keys() %}
+                            <th scope="col">
+                                {{ field }}
+                            </th>
                         {% endfor %}
                     </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-        {% if not logs %}
-            <medium class="text-muted d-block text-center">No logs available.</medium>
-        {% endif %}
-        <div class="toast-container position-fixed bottom-0 end-0 p-3">
-            <div id="toast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
-                <div class="toast-header">
-                    <strong class="me-auto">AniMalSync</strong>
-                    <small>Alert</small>
-                    <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
-                </div>
-                <div id="toast-body" class="toast-body">
-                </div>
-            </div>
+                </thead>
+                <tbody>
+                    {% for log in logs %}
+                        <tr>
+                            <th scope="row">
+                                {% if log['success'] %}
+                                    <span class="bi bi-check-circle-fill text-success" role="img" aria-label="Success"></span>
+                                {% else %}
+                                    <span class="bi bi-x-circle-fill text-danger" role="img" aria-label="Fail"></span>
+                                {% endif %}
+                            </th>
+                            {% for field in log_headers.values() %}
+                                {% if field == 'title' %}
+                                    <td class="text-truncate" style="max-width: 250px">
+                                        {{ log[field] }}
+                                    </td>
+                                {% else %}
+                                    <td>{{ log[field] }}</td>
+                                {% endif %}
+                            {% endfor %}
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% if not logs %}
+                <medium class="text-muted d-block text-center">No logs available.</medium>
+            {% endif %}
         </div>
     </div>
 </div>
 <script>
-    $.get("/mal_authorized", function( data ) {
-        const { authorized } = data;
-        $("#mal-spinner").addClass("d-none");
-        if (authorized) {
-            $("#mal-authorized").removeClass("d-none");
-            $("#enable-sync-btn").removeClass("disabled")
-            $("#enable-sync-btn").removeClass("btn-outline-secondary")
-            $("#enable-sync-btn").removeClass("text-decoration-line-through")
-            $("#enable-sync-btn").addClass("btn-outline-success")
-        } else {
-            $("#mal-form").removeClass("d-none");
-        }
-    });
+    function checkMalAuthorization() {
+        $.get("/mal_authorized", function( data ) {
+            const { authorized } = data;
+            const malspinner = $("#mal-spinner");
+            const malauthorized = $("#mal-authorized");
+            const syncbutton = $("#enable-sync-btn");
+            const malform = $("#mal-form")
+            const changeMalFormBtn = $("#unauth-mal-form button[type=submit]");
+            malspinner.addClass("d-none");
+            if (authorized) {
+                malauthorized.removeClass("d-none");
+                syncbutton.removeClass("disabled");
+                syncbutton.removeClass("btn-outline-secondary");
+                syncbutton.removeClass("text-decoration-line-through");
+                syncbutton.addClass("btn-outline-success");
+                malform.addClass("d-none");
+                changeMalFormBtn.removeClass("disabled");
+                changeMalFormBtn.removeClass("text-decoration-line-through");
+            } else {
+                malauthorized.addClass("d-none");
+                syncbutton.addClass("btn-outline-secondary");
+                syncbutton.addClass("text-decoration-line-through");
+                syncbutton.removeClass("btn-outline-success");
+                malform.removeClass("d-none");
+                changeMalFormBtn.addClass("disabled");
+                changeMalFormBtn.addClass("text-decoration-line-through");
+            }
+        });
+    }
 
     // When button is clicked, consider all other buttons in form unclicked and
     // set this one clicked.
@@ -207,5 +247,7 @@
             }
         })
     });
+
+    checkMalAuthorization();
 </script>
 {% endblock %}

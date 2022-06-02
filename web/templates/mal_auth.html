@@ -1,13 +1,7 @@
 <!-- mal_auth.html - Page for MAL authorization -->
 
+{% from "_macros.html" import render_notice %}
 {% extends "base.html" %}
 {% block body %}
-<div class="card text-center w-50 mx-auto mt-5">
-    <div class="card-header">
-        MyAnimeList Authorization
-    </div>
-    <div class="card-body">
-        <p class="card-text">{{body}}</p>
-    </div>
-</div>
+{{ render_notice("MyAnimeList Authorization", body) }}
 {% endblock %}

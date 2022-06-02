@@ -1,0 +1,63 @@
+{% from "_macros.html" import render_field, render_toast %}
+<div class="modal fade" id="change-anilist-modal" tabindex="-1" aria-labelledby="anilist-modal-label">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="anilist-modal-label">Change AniList User</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="change-anilist-form" class="needs-validation">
+                    {{ anilist_form.csrf_token }}
+                    {{ render_field(anilist_form.anilist_user, class="form-control", placeholder=anilist_form.anilist_user.label.text) }}
+                    <div class="modal-footer">
+                        <button id="anilist-close-btn" type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        <div id="anilist-spinner" class="spinner-border text-primary d-none" role="status">
+                            <span class="visually-hidden">Updating...</span>
+                        </div>
+                        <input type="submit" class="btn btn-primary" value="Update" />
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+    function setupAniListForm() {
+        $("#change-anilist-form").submit(function (e) {
+            e.preventDefault();
+            const submitBtn = $("#change-anilist-form input[type=submit]");
+            const spinner = $("#anilist-spinner");
+            submitBtn.addClass("d-none");
+            spinner.removeClass("d-none");
+            $.ajax({
+                type: "PATCH",
+                url: "{{ url_for('change_anilist') }}",
+                contentType: "application/x-www-form-urlencoded; charset=UTF-8",
+                data: $(this).serialize(),
+                success: function (resp) {
+                    $("#toast-body").text(resp['message']);
+                    $("#anilist-username").text(resp['anilist_username']);
+                    const toast = new bootstrap.Toast($("#toast"));
+                    toast.show();
+                    submitBtn.blur();
+                    submitBtn.removeClass("d-none");
+                    spinner.addClass("d-none");
+                    $(".form-errors").remove();
+                    $("#anilist-close-btn").click();
+                },
+                error: function (resp) {
+                    let newModal = $(resp['responseText']);
+                    let newModalContent = $(".modal-content", newModal).html();
+                    $("#change-anilist-modal .modal-content").first()
+                        .html(newModalContent);
+                    submitBtn.removeClass("d-none");
+                    spinner.addClass("d-none");
+                    setupAniListForm();
+                }
+            });
+        });
+    }
+    
+    setupAniListForm();
+</script>
