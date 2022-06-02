@@ -6,7 +6,6 @@
         ('home', 'Home', False, False), 
         ('profile', 'Profile', True, False), 
         ('login', 'Login', False, True),
-        ('about', 'About', False, False),
         ('logout', 'Logout', True, False)
     ] %}
 {% set active_page = active_page|default('home', True) %}
@@ -35,7 +34,7 @@
     </head>
 
     <body>
-        <nav class="navbar navbar-dark navbar-expand-sm navbar-fixed-top">
+        <nav class="navbar navbar-dark navbar-expand-md sticky-top" style="z-index: 1050">
             <div class="container-sm">
                 <a class="navbar-brand" href="{{ url_for('home') }}">AniMalSync</a>
                 <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#home-nav-menu" aria-controls="home-nav-menu" aria-expanded="false" aria-label="Toggle navigation">
@@ -44,7 +43,7 @@
 
                 <!-- Navbar contents on right -->
                 <div class="collapse navbar-collapse flex-row-reverse" id="home-nav-menu">
-                    <ul class="navbar-nav flex-column flex-sm-row align-items-end">
+                    <ul class="navbar-nav flex-column flex-md-row align-items-end">
                         <!-- Conditionally generate nav based on if user is authenticated -->
                         {% for id, caption, req_signed_in, req_signed_out in navbar %}
                             {% if (not req_signed_in and not req_signed_out) or
@@ -63,5 +62,9 @@
 
         {% block body %}{% endblock %}
     </body>
+    
+    <footer class="text-light text-center" style="height: 2em">
+        <small class="align-middle d-inline-block">&copy; Copyright 2022, Kevin Cao</small>
+    </footer>
 </html>
 

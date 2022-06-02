@@ -1,7 +1,31 @@
-<!-- about.html - About page for AniMalSync webpage -->
+<!-- about.html - About section for AniMalSync webpage -->
 
-{% extends "base.html" %}
-{% set active_page = "about" %}
-{% block body %}
-<p>About page</p>
-{% endblock %}
+<div id="about" class="bg-dark-color py-5">
+    <div class="container-md" style="max-width: 1100px">
+        <h1 class="text-center mb-5">
+            What is AniMalSync?
+        </h1>
+        <div class="row g-5 flex-row-reverse justify-content-center mx-2">
+            <img class="col-auto col-md-4" src="static/assets/images/mal_merged.png" style="max-width: 300px; object-fit: contain" />
+            <p class="col-auto col-md-8 lead">
+                AniMalSync is a project I created when I first switched to using AniList over MyAnimeList.
+                Having used MyAnimeList for several years, however, I didn't want to completely drop the site in 
+                case I ever decided to go back to it. However, manually updating both sites was a hassle, so I created 
+                a command line script to automate the process. 
+
+                <br />
+                <br />
+
+                Originally, the script ran on my Raspberry Pi, but once I got familiar with AWS tools, I decided to port it 
+                to a webapp. Every 25 minutes, the app uses the AniList GraphQL to fetch updates from your profile and reflect 
+                those changes to your MyAnimeList account using MAL's REST API.
+
+                <br />
+                <br />
+
+                AniMalSync is an <strong><i>unofficial</i></strong> app and is not officially associated with either AniList or 
+                MyAnimeList in any capacity.
+            </p>
+        </div>
+    </div>
+</div>

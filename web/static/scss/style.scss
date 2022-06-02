@@ -1,10 +1,8 @@
-:root {
-    --color-primary: #202D51;
-    --color-secondary: #E7EBEE;
-    --color-action: #9EFAA0;
-}
-
 $primary: #2E4176;
+$background: #E7EBEE;
+$background-dark: darken($background, 10%);
+
+$card-height: 100%;
 
 @import "../bootstrap/scss/bootstrap";
 
@@ -24,8 +22,12 @@ $colors: (
   "gray-dark": $gray-800
 );
 
-body {
-    background-color: var(--color-secondary);
+.bg-color {
+    background-color: $background;
+}
+
+.bg-dark-color {
+    background-color: $background-dark;
 }
 
 nav {
@@ -46,4 +48,32 @@ $value in $theme-colors {
 
 .profile-table tr {
     height: 45px;
+}
+
+#titlecard h1 {
+    font-weight: bolder;
+}
+
+.parallax {
+    min-height: 100vh;
+    background-attachment: fixed;
+    background-size: cover;
+    background-position: center;
+}
+
+.navbar {
+    background-color: rgba(darken($primary, 10%), 0.88);
+    backdrop-filter: saturate(200%) blur(15px);
+}
+
+footer {
+    background-color: $primary;
+}
+
+.text-shadow {
+    text-shadow: 2px 2px #000000;
+}
+
+.blur-bg {
+    backdrop-filter: blur(5px);
 }

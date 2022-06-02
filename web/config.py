@@ -32,8 +32,6 @@ class Config:
     HOST_IP = os.environ['HOST_IP'] # Domain name 
     HOST_PORT = int(os.environ['HOST_PORT'])
     APP_HOST = os.environ['APP_HOST_IP']
-    SERVER_NAME = f"{APP_HOST}:{HOST_PORT}" \
-        if FLASK_ENV == 'development' else HOST_IP
 
     APP_EMAIL = 'animalsync.app@gmail.com'
 
@@ -107,3 +105,4 @@ class ProductionConfig(Config):
     LOG_LEVEL = 'INFO'
     DEBUG = False
     TESTING = False
+    SERVER_NAME = os.environ['HOST_IP']

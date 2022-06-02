@@ -1,13 +1,8 @@
-import uuid
-import boto3
-import secrets
-import json
-import time
-import requests
+import uuid, boto3, secrets, json, time, requests, os, random
 from urllib import parse as url_parse
 from boto3.dynamodb.conditions import Key
 from botocore.exceptions import ClientError
-from flask import abort, redirect, render_template, request, url_for
+from flask import redirect, render_template, request, url_for
 from flask_login import current_user, login_user, logout_user, login_required
 from flask_wtf import FlaskForm
 from app import app
@@ -28,7 +23,11 @@ def home():
     """
     Home page of application
     """
-    return render_template('home.html')
+    images_dir = os.path.join(app.static_folder, 'assets/images/carousel')
+    images = os.listdir(images_dir)
+    images = list(map(lambda i : (os.path.join('static/assets/images/carousel', i)), images))
+    random.shuffle(images)
+    return render_template('home.html', images=images)
 
 @app.route('/profile', methods=['GET'])
 @login_required
@@ -311,7 +310,7 @@ def authorize_mal():
 
     user = get_dynamodb_user(
         user_id=user_id,
-        fields=['code_verifier']
+        fields=['code_verifier', 'sync_enabled']
     )
 
     if user is None or 'code_verifier' not in user:
@@ -353,6 +352,15 @@ def authorize_mal():
             body=("MyAnimeList authorization failed. Please try again "
                   "by going to your profile and resending the authorization link.")
         )
+
+    # If the user's sync is enabled, send another request for sync.
+    if user['sync_enabled']:
+        try:
+            schedule_sync(user_id=user_id, now=True)
+        except ClientError as e:
+            app.logger.error(
+                f"[User {user_id}] Failed to start new sync after MAL auth: {e}"
+            )
 
     return render_template(
         'mal_auth.html',
@@ -723,7 +731,6 @@ def reset_password():
                 )
             
             form.user_id_field.data = user['id']
-            print(form.user_id_field.data)
         except ClientError as e:
             app.logger.error(
                 f"AWS error while checking validity of password reset link: {e}"
@@ -737,14 +744,16 @@ def reset_password():
     if form.validate_on_submit():
         try:
             user_id = form.user_id_field.data
-            print(user_id)
             hashed_pass = hash_password(form.password.data)
             update_dynamodb_user(
                 user_id=user_id,
                 data={
-                    'password': hashed_pass
+                    'password': hashed_pass,
+                    'reset_password_code': None,
+                    'reset_password_timestamp': None
                 }
             )
+            app.logger.info(f"[User {user_id}] Reset their password.")
             return redirect(url_for('home'))
         except ClientError as e:
             app.logger.error(

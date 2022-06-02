@@ -1,10 +1,4 @@
 @charset "UTF-8";
-:root {
-  --color-primary: #202D51;
-  --color-secondary: #E7EBEE;
-  --color-action: #9EFAA0;
-}
-
 /*!
  * Bootstrap v5.2.0-beta1 (https://getbootstrap.com/)
  * Copyright 2011-2022 The Bootstrap Authors
@@ -4304,7 +4298,7 @@ textarea.form-control-lg {
   --bs-card-cap-padding-x: 1rem;
   --bs-card-cap-bg: rgba(0, 0, 0, 0.03);
   --bs-card-cap-color: ;
-  --bs-card-height: ;
+  --bs-card-height: 100%;
   --bs-card-color: ;
   --bs-card-bg: #fff;
   --bs-card-img-overlay-padding: 1rem;
@@ -11747,8 +11741,12 @@ textarea.form-control-lg {
     display: none !important;
   }
 }
-body {
-  background-color: var(--color-secondary);
+.bg-color {
+  background-color: #E7EBEE;
+}
+
+.bg-dark-color {
+  background-color: #c9d2d9;
 }
 
 nav {
@@ -11895,8 +11893,32 @@ nav {
   height: 45px;
 }
 
-input[type=hidden] {
-  margin: 0 !important;
+#titlecard h1, #titlecard .h1 {
+  font-weight: bolder;
+}
+
+.parallax {
+  min-height: 100vh;
+  background-attachment: fixed;
+  background-size: cover;
+  background-position: center;
+}
+
+.navbar {
+  background-color: rgba(32, 45, 81, 0.88);
+  backdrop-filter: saturate(200%) blur(15px);
+}
+
+footer {
+  background-color: #2E4176;
+}
+
+.text-shadow {
+  text-shadow: 2px 2px #000000;
+}
+
+.blur-bg {
+  backdrop-filter: blur(5px);
 }
 
 /*# sourceMappingURL=style.css.map */
