@@ -1,0 +1,105 @@
+<!-- home.html - Home page for AniMalSync website -->
+
+{% extends "base.html" %}
+{% set active_page = "home" %}
+{% block body %}
+<div id="carousel" class="carousel slide carousel-fade" data-bs-ride="carousel" data-bs-touch="false" data-bs-pause="false">
+    <div class="carousel-inner">
+    <div
+        id="titlecard"
+        class="position-absolute text-light text-center blur-bg p-5 border border-white border-4"
+        style="z-index: 1000; left: 50%; top: 50%; transform: translate(-50%, -50%);"
+    >
+        <h1 class="display-1 text-shadow">
+            AniMalSync
+        </h1>
+        <h3 class="text-shadow text-light">
+            Unofficial AniList to MyAnimeList Syncer
+        </h3>
+    </div>
+        {% for image in images %}
+            <div
+                class="carousel-item parallax {% if loop.index == 1 %} active {% endif %}"
+                data-bs-interval="3500"
+                style="background-image: url({{ url_for('static', filename=image) }})"
+            ></div>
+        {% endfor %}
+    </div>
+</div>
+<div class="row row-cols-1 row-cols-md-3 g-4 my-5 container-md mx-auto">
+    <div class="col">
+        <div class="card shadow">
+            <div class="ps-4 card-img-top">
+                <i class="bi-arrow-repeat" style="font-size: 72px"></i>
+            </div>
+            <div class="card-body d-flex flex-column">
+                <h5 class="card-title">Automated Updates</h5>
+                <p class="card-text">
+                    AniMalSync automatically checks your AniList account for 
+                    new updates and copies them over to your MyAnimeList account. 
+                    Get the best of both sites!
+                </p>
+                <div class="ms-auto mt-auto">
+                    <a href="#about" class="btn btn-primary mt-auto d-inline-block">
+                        Learn More
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col">
+        <div class="card shadow">
+            <div class="ps-4 card-img-top">
+                <i class="bi-github" style="font-size: 72px"></i>
+            </div>
+            <div class="card-body d-flex flex-column">
+                <h5 class="card-title">Open Source</h5>
+                <p class="card-text">
+                    This project is 100% open source. Feel free to make issue reports
+                    and pull requests! You can find the details of this project on Github.
+                </p>
+                <div class="ms-auto mt-auto">
+                    <a
+                        href="https://github.com/defCoding/anilist-to-mal-sync"
+                        target="__blank"
+                        class="btn btn-primary"
+                    >
+                        Go to Github
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col">
+        <div class="card shadow">
+            <div class="ps-4 card-img-top">
+                <i class="bi-cloud" style="font-size: 72px"></i>
+            </div>
+            <div class="card-body d-flex flex-column">
+                <h5 class="card-title">Powered by AWS</h5>
+                <p class="card-text">
+                    This entire webapp is powered by the following AWS services:
+                    <br />
+                    DynamoDB, Lambda, EC2, SQS, SNS, SES, SFN, SSM
+                </p>
+                <div class="ms-auto mt-auto">
+                    <a
+                        href="https://github.com/defCoding/anilist-to-mal-sync"
+                        target="__blank"
+                        class="btn btn-primary"
+                    >
+                        View Flowchart
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% include "about.html" %}
+{% include "faq.html" %}
+<script>
+    $(".navbar").removeClass("sticky-top");
+    $(".navbar").addClass("fixed-top");
+</script>
+
+{% endblock %}

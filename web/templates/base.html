@@ -1,0 +1,78 @@
+<!--
+    navbar contents structure:
+    (id, caption, requires signed in, requires signed out)
+-->
+{% set navbar = [
+        ('home', 'Home', False, False), 
+        ('profile', 'Profile', True, False), 
+        ('login', 'Login', False, True),
+        ('logout', 'Logout', True, False)
+    ] %}
+{% set active_page = active_page|default('home', True) %}
+
+<!-- base.html - base template file for all templates -->
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta name="keywords" content="anime, manga, anilist, myanimelist, manga, sync, japan">
+        <meta name="author" content="Kevin Cao">
+        <meta property="og:title" content="AniMalSync">
+        <meta property="og:description" content="Unofficial AniList to MyAnimeList syncer">
+        <meta property="og:image" content="{{ url_for('static', filename='assets/images/mal_merged.png') }}">
+        <meta property="og:url" content="{{ url_for('home') }}">
+        <!-- https://stackoverflow.com/questions/18720899/how-can-i-determine-if-a-jinja2-template-block-is-empty -->
+        <title>AniMalSync{% if self.title() %} - {% endif %}{% block title %}{% endblock %}</title>
+        <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='assets/images/favicon.ico') }}">
+
+        {# CSS files #}
+        <!-- <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0-beta1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-0evHe/X+R7YkIZDRvuzKMRqM+OrBnVFBL6DOitfPri4tjfHxaWutUpFmBp4vmVor" crossorigin="anonymous"> -->
+        <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/style.css') }}" />
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.3/font/bootstrap-icons.css">
+
+        {# Custom Fonts #}
+        <link href="https://fonts.googleapis.com/css?family=Open+Sans:300italic,400italic,600italic,700italic,800italic,400,300,600,700,800" rel="stylesheet" type="text/css">
+
+        {# JavaScript files #}
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0-beta1/dist/js/bootstrap.bundle.min.js" integrity="sha384-pprn3073KE6tl6bjs2QrFaJGz5/SUsLqktiwsUTF55Jfv3qYSDhgCecCxMW52nD2" crossorigin="anonymous"></script>
+    </head>
+
+    <body class="d-flex flex-column min-vh-100">
+        <nav class="navbar navbar-dark navbar-expand-md sticky-top" style="z-index: 1050">
+            <div class="container-sm">
+                <a class="navbar-brand" href="{{ url_for('home') }}">AniMalSync</a>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#home-nav-menu" aria-controls="home-nav-menu" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <!-- Navbar contents on right -->
+                <div class="collapse navbar-collapse flex-row-reverse" id="home-nav-menu">
+                    <ul class="navbar-nav flex-column flex-md-row align-items-end">
+                        <!-- Conditionally generate nav based on if user is authenticated -->
+                        {% for id, caption, req_signed_in, req_signed_out in navbar %}
+                            {% if (not req_signed_in and not req_signed_out) or
+                                (req_signed_in and current_user.is_authenticated) or
+                                (req_signed_out and not current_user.is_authenticated)
+                            %}
+                            <li class="nav-item">
+                                <a class="nav-link{% if id == active_page %} active{% endif %}" href="{{ url_for(id) }}">{{ caption }}</a>
+                            </li>
+                            {% endif %}
+                        {% endfor %}
+                    </ul>
+                </div> 
+            </div>
+        </nav>
+
+        <div>
+            {% block body %}{% endblock %}
+        </div>
+        <footer class="text-light text-center mt-auto" style="height: 2em;">
+            <small class="align-middle d-inline-block">&copy; Copyright 2022, Kevin Cao</small>
+        </footer>
+    </body>
+</html>
+

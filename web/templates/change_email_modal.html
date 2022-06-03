@@ -1,0 +1,59 @@
+{% from "_macros.html" import render_field %}
+<div class="modal fade" id="change-email-modal" tabindex="-1" aria-labelledby="email-modal-label">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="email-modal-label">Change Email</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="change-email-form" class="needs-validation">
+                    {{ email_form.csrf_token }}
+                    {{ render_field(email_form.email, class="form-control", placeholder=email_form.email.label.text) }}
+                    {{ render_field(email_form.password, class="form-control", placeholder=email_form.password.label.text) }}
+                    {{ render_field(email_form.errors_field, class="form-control") }}
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        <div id="email-spinner" class="spinner-border text-primary d-none" role="status">
+                            <span class="visually-hidden">Updating...</span>
+                        </div>
+                        <input type="submit" class="btn btn-primary" value="Update" />
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+    function setupEmailForm() {
+        $("#change-email-form").submit(function (e) {
+            e.preventDefault();
+            const submitBtn = $("#change-email-form input[type=submit]");
+            const spinner = $("#email-spinner");
+            submitBtn.addClass("d-none");
+            spinner.removeClass("d-none");
+            $.ajax({
+                type: "PATCH",
+                url: "{{ url_for('change_email') }}",
+                contentType: "application/x-www-form-urlencoded; charset=UTF-8",
+                data: $(this).serialize(),
+                success: function (resp) {
+                    window.location.replace("{{ url_for('send_verify') }}")
+                },
+                error: function (resp) {
+                    let newModal = $(resp['responseText']);
+                    let newModalContent = $(".modal-content", newModal).html();
+                    $("#change-email-modal .modal-content").first()
+                        .html(newModalContent);
+                    setupEmailForm();
+                },
+                completion: function() {
+                    submitBtn.removeClass("d-none");
+                    spinner.addClass("d-none");
+                }
+            });
+        });
+    }
+    
+    setupEmailForm();
+</script>

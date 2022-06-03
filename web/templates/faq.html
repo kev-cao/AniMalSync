@@ -1,0 +1,131 @@
+<div id="about" class="py-5 mb-5">
+    <div class="container-md" style="max-width: 1100px">
+        <h1 class="text-center mb-5">
+            Frequently Asked Questions
+        </h1>
+        <div class="accordion" id="faq-accordion">
+            <div class="accordion-item">
+                <h2 class="accordion-header" id="faq-heading-1">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq-1" aria-expanded="false" aria-controls="faq-1">
+                        What type of AniList updates are synced to MAL?
+                    </button>
+                </h2>
+                <div id="faq-1" class="accordion-collapse collapse" aria-labelledby="faq-heading-1" data-bs-parent="#faq-accordion">
+                    <div class="accordion-body">
+                        AniMalSync currently supports updates to both Anime and Manga entries. The following changes are supported:
+                        <br />
+                        <br />
+                        <ul>
+                            <li>Status</li>
+                            <li>Score</li>
+                            <li>Progress</li>
+                            <li>Repeating</li>
+                            <li>Times Repeated</li>
+                        </ul>
+
+                        <br />
+
+                        For scores, since AniList allows floating-point scores but MAL only supports integer scores, AniMalSync will round 
+                        your score to the nearest integer before submitting to MAL.
+
+                        <br />
+
+                        Unfortunately, there are some features that are not/can not be implemented. For example, removing an entry from your AniList 
+                        profile is not yet supported, as the API endpoint being used does not support that check. There is another endpoint that could be 
+                        used, but it is currently not supported.
+                    </div>
+                </div>
+            </div>
+            <div class="accordion-item">
+                <h2 class="accordion-header" id="faq-heading-2">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq-2" aria-expanded="false" aria-controls="faq-2">
+                        How do I get started?
+                    </button>
+                </h2>
+                <div id="faq-2" class="accordion-collapse collapse" aria-labelledby="faq-heading-2" data-bs-parent="#faq-accordion">
+                    <div class="accordion-body">
+                        AniMalSync begins syncing all changes made after the auto-sync feature is enabled for your account. Therefore, if you have a 
+                        fresh AniList account, you will want to import your MAL entries to your AniList account first before enabling auto-sync.
+
+                        <br />
+                        <hr />
+                        <br />
+
+                        <b>How to Export Lists from MAL</b>
+
+                        <br />
+
+                        To export your lists from MAL, <a href="https://myanimelist.net/panel.php?go=export" class="text-decoration-none" target="__blank">go to this MAL link</a>. 
+                        From there, you can export either your anime or manga list (or both).
+
+                        <br />
+                        <br />
+
+                        Download the exported <p class="monospace d-inline-block">.gz</p> file and unzip the archived 
+                        <p class="monospace d-inline-block">.xml</p> file.
+
+                        <br />
+                        <hr />
+                        <br />
+
+                        <b>How to Import Lists into AniList</b>
+
+                        <br />
+
+                        Once you have the unzipped <p class="monospace d-inline-block">.xml</p> files from MAL, <a href="https://anilist.co/settings/import" class="text-decoration-none" target="__blank">go to this AniList link</a>. 
+
+                        <br />
+
+                        Simply upload (or drag and drop) the files you've unzipped into their corresponding fields and you are done!
+
+                        <br />
+                        <br />
+                        <hr />
+                        <br />
+
+                        <b>Alright, I've done that. Now what?</b>
+
+                        <br />
+
+                        Log into your account and go to your profile page. Assuming you've verified your email and authorized AniMalSync to access your MAL account, 
+                        enable auto-sync and you are good to go!
+
+                        <br />
+                        <br />
+
+                        Roughly every month or so, the MyAnimeList OAuth tokens used by AniMalSync will expire and a new authorization email will be sent 
+                        to you so make sure to keep an eye out for that. Auto-sync will be disabled until the app has been authorized again.
+                    </div>
+                </div>
+            </div>
+            <div class="accordion-item">
+                <h3 class="accordion-header" id="faq-heading-3">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq-3" aria-expanded="false" aria-controls="faq-3">
+                        What is the access code to create an account?
+                    </button>
+                </h3>
+                <div id="faq-3" class="accordion-collapse collapse" aria-labelledby="faq-heading-3" data-bs-parent="#faq-accordion">
+                    <div class="accordion-body">
+                        Unfortunately, AniMalSync is closed and invite-only. The webapp is powered by AWS, and to avoid excessive charges on my account, 
+                        I've decided to limit the amount of accounts that can be made. If you wish to sign up, send an email to animalsync.app@gmail.com and 
+                        your request will be considered.
+                    </div>
+                </div>
+            </div>
+            <div class="accordion-item">
+                <h4 class="accordion-header" id="faq-heading-4">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq-4" aria-expanded="false" aria-controls="faq-4">
+                        What data is collected?
+                    </button>
+                </h4>
+                <div id="faq-4" class="accordion-collapse collapse" aria-labelledby="faq-heading-4" data-bs-parent="#faq-accordion">
+                    <div class="accordion-body">
+                        AniMalSync stores your email, AniList username, and MAL OAuth credentials to be able to function correctly. Sync logs are also 
+                        stored on your account so that you can view the sync history and see if any sync attempts failed and require manual syncing. These sync 
+                        logs are stored for only a week before they are completely wiped from the database. Other than that, no other information is stored.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

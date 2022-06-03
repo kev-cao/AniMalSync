@@ -1,0 +1,79 @@
+$primary: #2E4176;
+$background: #E7EBEE;
+$background-dark: darken($background, 10%);
+
+$card-height: 100%;
+
+@import "../bootstrap/scss/bootstrap";
+
+$colors: (
+  "blue": #202D51,
+  "indigo": $indigo-500,
+  "purple": $purple-500,
+  "pink": $pink-500,
+  "red": $red-500,
+  "orange": $orange-400,
+  "yellow": $yellow-300,
+  "green": $green-400,
+  "teal": $teal-500,
+  "cyan": $cyan-500,
+  "white": $white,
+  "gray": $gray-500,
+  "gray-dark": $gray-800
+);
+
+.bg-color {
+    background-color: $background;
+}
+
+.bg-dark-color {
+    background-color: $background-dark;
+}
+
+nav {
+    background-color: map-get($colors, "blue");
+}
+
+@each $color,
+$value in $theme-colors {
+    .btn-#{$color} {
+        @include button-variant($value, $value,
+            $hover-background: lighten($value, 10%),
+            $hover-border: lighten($value, 15%),
+            $active-background: lighten($value, 15%),
+            $active-border: lighten($value, 17.5%)
+        );
+    }
+}
+
+.profile-table tr {
+    height: 45px;
+}
+
+#titlecard h1 {
+    font-weight: bolder;
+}
+
+.parallax {
+    min-height: 100vh;
+    background-attachment: fixed;
+    background-size: cover;
+    background-position: center;
+}
+
+.navbar {
+    background-color: rgba(darken($primary, 10%), 0.88);
+    backdrop-filter: saturate(200%) blur(15px);
+}
+
+footer {
+    background-color: $primary;
+}
+
+.text-shadow {
+    text-shadow: 2px 2px #000000;
+}
+
+.blur-bg {
+    backdrop-filter: blur(5px);
+}

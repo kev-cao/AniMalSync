@@ -1,0 +1,36 @@
+<!-- login.html - Login page for AniMalSync website -->
+
+{% extends "base.html" %}
+{% set active_page = "login" %}
+{% block title %}Login{% endblock %}
+{% block body %}
+{% from "_macros.html" import render_field %}
+<div class="card align-items-center mx-auto my-5" style="max-width:500px; min-width:350px;">
+    <h5 class="card-header w-100 text-center">
+        Log In to Your Account
+    </h5>
+    <div class="card-body text-center">
+        <form class="needs-validation" action="/login" method="POST">
+            {{ form.csrf_token }}
+            {{ render_field(form.email, class="form-control", placeholder=form.email.label.text) }}
+            {{ render_field(form.password, class="form-control", placeholder=form.password.label.text) }}
+            {{ render_field(form.recaptcha, class="form-control mx-auto") }}
+            <div class="mb-3 form-check d-flex justify-content-center">
+                {{ form.remember_me(class="form-check-input") }}
+                <label class="form-check-label ms-2" for="{{ form.remember_me.id }}">
+                    Remember Me
+                </label>
+            </div>
+            {{ render_field(form.errors_field, class="form-control") }}
+            <input type="submit" value="Log In" class="btn btn-primary" />
+            <input type="hidden" value="{{ next or '' }}" name="next" />
+        </form>
+        <p class="mt-3">
+            <a class="text-decoration-none" href="/forgot_password">Forgot your password?</a>
+        </p>
+        <p class="mt-3">
+            <a class="text-decoration-none" href="/register">New User? Register Here</a>
+        </p>
+    </div>
+</div>
+{% endblock %}

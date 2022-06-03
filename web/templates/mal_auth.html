@@ -1,0 +1,7 @@
+<!-- mal_auth.html - Page for MAL authorization -->
+
+{% from "_macros.html" import render_notice %}
+{% extends "base.html" %}
+{% block body %}
+{{ render_notice("MyAnimeList Authorization", body) }}
+{% endblock %}

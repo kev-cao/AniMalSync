@@ -1,0 +1,26 @@
+name: Deploy MAL Auth Email Script
+on: 
+  workflow_dispatch:
+  push:
+    branches:
+      - 'master'
+    paths:
+      - 'lambda/email/**'
+      - '.github/workflows/email.yml'
+jobs:
+  email:
+    name: Build and deploy email MAL authorization Lambda
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v2
+      - name: Setting up Python
+        uses: actions/setup-python@v2
+      - name: Deploying to AWS Lambda
+        uses: appleboy/lambda-action@master
+        with:
+          aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws_region: ${{ secrets.AWS_REGION_NAME }}
+          function_name: AniMalSync-OAuth-Emailer
+          source: lambda/email/email_lambda.py
