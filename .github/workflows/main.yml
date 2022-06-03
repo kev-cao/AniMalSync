@@ -1,13 +1,13 @@
-name: Deploy to AWS Lambda
+name: Deploy Sync Script
 on: 
   workflow_dispatch:
   push:
     paths:
-      - 'lambda/**'
+      - 'lambda/sync/**'
       - '.github/workflows/main.yml'
 jobs:
-  auth:
-    name: Build sync script Lambda
+  sync:
+    name: Build and deploy sync script Lambda
     runs-on: ubuntu-latest
     steps:
       - name: Checkout source code
@@ -28,8 +28,16 @@ jobs:
           aws_region: ${{ secrets.AWS_REGION_NAME }}
           function_name: AniMalSync-Script
           zip_file: lambda/sync/lambda-env.zip
+
+name: Deploy MAL Auth Email Script
+on: 
+  workflow_dispatch:
+  push:
+    paths:
+      - 'lambda/email/**'
+      - '.github/workflows/main.yml'
   email:
-    name: Build email MAL authorization Lambda
+    name: Build and deploy email MAL authorization Lambda
     runs-on: ubuntu-latest
     steps:
       - name: Checkout source code
@@ -44,3 +52,31 @@ jobs:
           aws_region: ${{ secrets.AWS_REGION_NAME }}
           function_name: AniMalSync-OAuth-Emailer
           source: lambda/email/email_lambda.py
+
+
+name: Deploy Web App to Elastic Beanstalk
+on: 
+  workflow_dispatch:
+  push:
+    paths:
+      - 'web/**'
+      - '.github/workflows/main.yml'
+  email:
+    name: Build and deploy webapp
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v2
+      - name: Generate deployment package
+        run: |
+          cd web/
+          zip -r app.zip .
+      - name: Deploying to Elastic Beanstalk
+        uses: einaregilsson/beanstalk-deploy@v20
+        with:
+          aws_access_key: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws_secret_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          region: ${{ secrets.AWS_REGION_NAME }}
+          application_name: AniMalSync
+          environment_name: Animalsync-env
+          deployment_package: web/app.zip
