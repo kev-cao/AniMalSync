@@ -9,6 +9,10 @@ import os
 from json import JSONDecodeError
 from botocore.exceptions import ClientError
 
+aws_region = os.environ['AWS_REGION_NAME'] \
+    if 'AWS_REGION_NAME' in os.environ else 'us-east-2'
+ssm = boto3.client('ssm', region_name=aws_region)
+
 class Config:
     """
     Base configuration class for Flask application. Contains various environment variables.
@@ -37,8 +41,7 @@ class Config:
     # AWS Variables
     AWS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID')
     AWS_SECRET_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY')
-    AWS_REGION_NAME = os.environ['AWS_REGION_NAME'] \
-        if 'AWS_REGION_NAME' in os.environ else 'us-east-2'
+    AWS_REGION_NAME = aws_region
     AWS_SNS_SYNC_TOPIC = 'arn:aws:sns:us-east-2:983398483317:AniMalSync-Sync-Notifier'
     AWS_USER_DYNAMODB_TABLE = 'AniMalSync-User-Data'
     AWS_LOG_DYNAMODB_TABLE = 'AniMalSync-Sync-Log'
@@ -48,7 +51,6 @@ class Config:
     RESET_PASSWORD_EMAIL_TEMPLATE = 'AniMalSync_MAL_Reset_Password'
 
     # Fetch app keys
-    ssm = boto3.client('ssm', region_name=AWS_REGION_NAME)
     try:
         param = ssm.get_parameter(
             Name='/animalsync/keys',
@@ -56,12 +58,6 @@ class Config:
         )['Parameter']['Value']
         app_keys = json.loads(param)
         SECRET_KEY = app_keys['APP_SECRET_KEY']
-        RECAPTCHA_PRIVATE_KEY = app_keys[
-            f'{"DEV_" if FLASK_ENV == "development" else ""}RECAPTCHA_PRIVATE_KEY'
-        ]
-        RECAPTCHA_PUBLIC_KEY = app_keys[
-            f'{"DEV_" if FLASK_ENV == "development" else ""}RECAPTCHA_PUBLIC_KEY'
-        ]
     except ClientError as e:
         print(f"Unable to retrieve AniMalSync secrets from SSM: {e}")
         raise e
@@ -95,6 +91,21 @@ class DevelopmentConfig(Config):
     DEBUG = True
     TESTING = True
 
+    try:
+        param = ssm.get_parameter(
+            Name='/animalsync/keys',
+            WithDecryption=True
+        )['Parameter']['Value']
+        app_keys = json.loads(param)
+        RECAPTCHA_PRIVATE_KEY = app_keys['DEV_RECAPTCHA_PRIVATE_KEY']
+        RECAPTCHA_PUBLIC_KEY = app_keys['DEV_RECAPTCHA_PUBLIC_KEY']
+    except ClientError as e:
+        print(f"Unable to retrieve RECAPTCHA keys from SSM: {e}")
+        raise e
+    except (JSONDecodeError, KeyError) as e:
+        print(f"Malformed parameter value in SSM: {e}")
+        raise e
+
 
 class ProductionConfig(Config):
     """
@@ -104,3 +115,18 @@ class ProductionConfig(Config):
     LOG_LEVEL = 'INFO'
     DEBUG = False
     TESTING = False
+
+    try:
+        param = ssm.get_parameter(
+            Name='/animalsync/keys',
+            WithDecryption=True
+        )['Parameter']['Value']
+        app_keys = json.loads(param)
+        RECAPTCHA_PRIVATE_KEY = app_keys['RECAPTCHA_PRIVATE_KEY']
+        RECAPTCHA_PUBLIC_KEY = app_keys['RECAPTCHA_PUBLIC_KEY']
+    except ClientError as e:
+        print(f"Unable to retrieve RECAPTCHA keys from SSM: {e}")
+        raise e
+    except (JSONDecodeError, KeyError) as e:
+        print(f"Malformed parameter value in SSM: {e}")
+        raise e

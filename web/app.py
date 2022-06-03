@@ -51,6 +51,7 @@ app.logger.addHandler(log_stream_handler)
 app.logger.setLevel(log_level)
 
 app.logger.info(f"Using {configs[os.environ['ENV']]}")
+app.logger.info(f"RECAPTCHA PUBLIC KEY: {app.config['RECAPTCHA_PUBLIC_KEY']}")
 
 import auth
 import views
