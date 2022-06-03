@@ -25,6 +25,11 @@
 
                         <br />
 
+                        For scores, since AniList allows floating-point scores but MAL only supports integer scores, AniMalSync will round 
+                        your score to the nearest integer before submitting to MAL.
+
+                        <br />
+
                         Unfortunately, there are some features that are not/can not be implemented. For example, removing an entry from your AniList 
                         profile is not yet supported, as the API endpoint being used does not support that check. There is another endpoint that could be 
                         used, but it is currently not supported.
@@ -88,7 +93,7 @@
                         <br />
                         <br />
 
-                        Roughly every month or so, the MyAnimeList OAuth tokens used by AniMalSync will expire, and a new authorization email will be sent 
+                        Roughly every month or so, the MyAnimeList OAuth tokens used by AniMalSync will expire and a new authorization email will be sent 
                         to you so make sure to keep an eye out for that. Auto-sync will be disabled until the app has been authorized again.
                     </div>
                 </div>

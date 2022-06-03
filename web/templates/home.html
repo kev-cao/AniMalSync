@@ -21,7 +21,7 @@
             <div
                 class="carousel-item parallax {% if loop.index == 1 %} active {% endif %}"
                 data-bs-interval="3500"
-                style="background-image: url({{ image }})"
+                style="background-image: url({{ url_for('static', filename=image) }})"
             ></div>
         {% endfor %}
     </div>

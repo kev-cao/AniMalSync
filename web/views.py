@@ -25,7 +25,7 @@ def home():
     """
     images_dir = os.path.join(app.static_folder, 'assets/images/carousel')
     images = os.listdir(images_dir)
-    images = list(map(lambda i : (os.path.join('static/assets/images/carousel', i)), images))
+    images = list(map(lambda i : (os.path.join('assets/images/carousel', i)), images))
     random.shuffle(images)
     return render_template('home.html', images=images)
 
