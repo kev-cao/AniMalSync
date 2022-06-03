@@ -50,5 +50,7 @@ app.logger.addHandler(log_file_handler)
 app.logger.addHandler(log_stream_handler)
 app.logger.setLevel(log_level)
 
+app.logger.info(f"Using {configs[os.environ['ENV']]}")
+
 import auth
 import views

@@ -1,0 +1,30 @@
+name: Deploy Sync Script
+on: 
+  workflow_dispatch:
+  push:
+    paths:
+      - 'lambda/sync/**'
+      - '.github/workflows/sync.yml'
+jobs:
+  sync:
+    name: Build and deploy sync script Lambda
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v2
+      - name: Setting up Python
+        uses: actions/setup-python@v2
+      - name: Setting up environment
+        run: |
+          python -m pip install --upgrade pip
+          cd lambda/sync
+          pip3 install -r requirements.txt -t .
+          zip -r lambda-env.zip .
+      - name: Deploying to AWS Lambda
+        uses: appleboy/lambda-action@master
+        with:
+          aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws_region: ${{ secrets.AWS_REGION_NAME }}
+          function_name: AniMalSync-Script
+          zip_file: lambda/sync/lambda-env.zip

@@ -90,7 +90,6 @@ class DevelopmentConfig(Config):
     """
     Flask app configuration class for development environment.
     """
-    print(f"Using development config")
     FLASK_ENV = 'development'
     LOG_LEVEL = 'DEBUG'
     DEBUG = True
@@ -101,7 +100,6 @@ class ProductionConfig(Config):
     """
     Flask app configuration class for production environment.
     """
-    print(f"Using production config")
     FLASK_ENV = 'production'
     LOG_LEVEL = 'INFO'
     DEBUG = False
