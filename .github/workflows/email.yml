@@ -2,6 +2,8 @@ name: Deploy MAL Auth Email Script
 on: 
   workflow_dispatch:
   push:
+    branches:
+      - 'master'
     paths:
       - 'lambda/email/**'
       - '.github/workflows/email.yml'
