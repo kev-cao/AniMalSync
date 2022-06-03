@@ -29,7 +29,6 @@ class Config:
     STATIC_FOLDER = 'static'
     TEMPLATES_FOLDER = 'templates'
 
-    HOST_IP = os.environ['HOST_IP'] # Domain name 
     HOST_PORT = int(os.environ['HOST_PORT'])
     APP_HOST = os.environ['APP_HOST_IP']
 
@@ -105,4 +104,3 @@ class ProductionConfig(Config):
     LOG_LEVEL = 'INFO'
     DEBUG = False
     TESTING = False
-    SERVER_NAME = os.environ['HOST_IP']
