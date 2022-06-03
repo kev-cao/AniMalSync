@@ -22,7 +22,7 @@
         <meta property="og:title" content="AniMalSync">
         <meta property="og:description" content="Unofficial AniList to MyAnimeList syncer">
         <meta property="og:image" content="{{ url_for('static', filename='assets/images/mal_merged.png') }}">
-        <meta property="og:url" content="{{ url_for('home') }}">
+        <meta property="og:url" content="{{ request.url }}">
         <!-- https://stackoverflow.com/questions/18720899/how-can-i-determine-if-a-jinja2-template-block-is-empty -->
         <title>AniMalSync{% if self.title() %} - {% endif %}{% block title %}{% endblock %}</title>
         <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='assets/images/favicon.ico') }}">
