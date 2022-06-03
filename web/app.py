@@ -36,7 +36,7 @@ log_stream_handler = logging.StreamHandler()
 log_level = log_levels[app.config['LOG_LEVEL']]
 
 if log_level >= logging.INFO:
-    log_format = '%(asctime)s %(levelname)s: %(message)s f'
+    log_format = '%(asctime)s %(levelname)s: %(message)s'
 else:
     log_format = '%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'
 
@@ -49,9 +49,6 @@ log_stream_handler.setFormatter(logging.Formatter(log_format))
 app.logger.addHandler(log_file_handler)
 app.logger.addHandler(log_stream_handler)
 app.logger.setLevel(log_level)
-
-app.logger.info(f"Using {configs[os.environ['ENV']]}")
-app.logger.info(f"RECAPTCHA PUBLIC KEY: {app.config['RECAPTCHA_PUBLIC_KEY']}")
 
 import auth
 import views
