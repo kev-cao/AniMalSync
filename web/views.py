@@ -12,6 +12,9 @@ from utils import (hash_password, redirect_back, get_redirect_target, get_dynamo
                   update_dynamodb_user, get_anilist_username, mal_is_authorized,
                   schedule_sync)
 
+os.environ['TZ'] = "America/New_York"
+time.tzset()
+
 class InvalidVerificationError(Exception):
     """
     Exception class for when user uses an invalid email verification link.
@@ -61,7 +64,7 @@ def profile():
         # Format timestamp from epoch to human readable
         for log in logs:
             log['timestamp'] = time.strftime(
-                '%I:%M %p | %m/%d/%Y',
+                '%I:%M %p %Z | %m/%d/%Y',
                 time.localtime(int(log['timestamp']))
             )
     except ClientError as e:
@@ -82,7 +85,7 @@ def profile():
 
     if current_user.last_sync_timestamp:
         last_sync = time.strftime(
-            '%I:%M %p | %m/%d/%Y',
+            '%I:%M %p %Z | %m/%d/%Y',
             time.localtime(int(current_user.last_sync_timestamp))
         )
     else:
