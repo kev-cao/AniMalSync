@@ -457,7 +457,7 @@ def autosync():
             'message': "Successfully scheduled sync and enabled auto-sync."
         }, 201
     else:
-        sfn = boto3.client('stepfunctions')
+        sfn = boto3.client('stepfunctions', region_name=app.config['AWS_REGION_NAME'])
         try:
             user = get_dynamodb_user(
                 user_id=current_user.id,
