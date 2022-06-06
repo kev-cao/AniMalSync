@@ -254,7 +254,7 @@ def verify_email():
         )
 
         curr_time = int(time.time()) 
-        if not user or 'verification__code' not in user \
+        if not user or 'verification_code' not in user \
                 or code != user['verification_code']:
             raise InvalidVerificationError()
         elif curr_time - user['verification_timestamp'] > 60 * 5:
