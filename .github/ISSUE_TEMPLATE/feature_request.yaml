@@ -1,0 +1,17 @@
+name: Feature Request
+description: Request a new feature!
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to make a feature request!
+  - type: textarea
+    id: description
+    attributes:
+      label: Feature Description
+      description: Describe the feature that you want added to the app! Be descriptive.
+      placeholder: Describe the feature here
+    validations:
+      required: true
