@@ -2,8 +2,12 @@ import json
 import os
 import boto3
 import secrets
+import logging
 from json import JSONDecodeError
 from botocore.exceptions import ClientError
+
+logger = logging.getLogger()
+logger.setLevel(os.environ['LOG_LEVEL'])
 
 def lambda_handler(event, _):
     """
@@ -18,7 +22,7 @@ def lambda_handler(event, _):
     try:
         user_id = event['user_id']
     except KeyError as e:
-        print(e)
+        logger.error(e)
         return create_response(400, "Need to provide user to email.")
 
     # Fetch MAL keys
@@ -32,7 +36,7 @@ def lambda_handler(event, _):
         mal_id = mal_keys['MAL_CLIENT_ID']
     except (ClientError, JSONDecodeError) as e:
         msg = f"[User {user_id}] Could not fetch MAL keys."
-        print(f"{msg}: {e}")
+        logger.error(f"{msg}: {e}")
         return create_response(500, msg)
 
     # Fetch user data
@@ -51,14 +55,14 @@ def lambda_handler(event, _):
             raise KeyError()
     except (ClientError, KeyError) as e:
         msg = f"[User {user_id}] Could not fetch user email."
-        print(f"{msg}: {e}")
+        logger.error(f"{msg}: {e}")
         return create_response(500, msg)
 
     # Generate and send email
     ses = boto3.client('ses', region_name=os.environ['AWS_REGION_NAME'])
     code_challenge = secrets.token_urlsafe(100)[:128]
     auth_url = f"https://myanimelist.net/v1/oauth2/authorize?response_type=code&client_id={mal_id}&code_challenge={code_challenge}&state={user_id}"
-    print(f"[User {user_id}] Code Challenge: {code_challenge}")
+    logger.info(f"[User {user_id}] Code Challenge: {code_challenge}")
 
     # Add code challenge to DynamoDB
     try:
@@ -71,7 +75,7 @@ def lambda_handler(event, _):
         )
     except ClientError as e:
         msg = f"[User {user_id}] Could not add code challenge to user."
-        print(f"{msg}: {e}")
+        logger.error(f"{msg}: {e}")
         return create_response(500, msg)
 
     # Send email
@@ -88,7 +92,7 @@ def lambda_handler(event, _):
         )
     except ses.exceptions.MessageRejected as e:
         msg = f"[User {user_id}] Could not send notification email."
-        print(f"{msg}: {e}")
+        logger.error(f"{msg}: {e}")
         return create_response(500, msg)
 
     # Set dynamo to show that email was sent
@@ -102,7 +106,7 @@ def lambda_handler(event, _):
         )
     except ClientError as e:
         msg = f"[User {user_id}] Could not update user to show email was sent"
-        print(f"{msg}: {e}")
+        logger.error(f"{msg}: {e}")
         return create_response(500, msg)
 
     return create_response(200, "Email successfully sent!")

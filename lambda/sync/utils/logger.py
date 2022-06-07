@@ -1,13 +1,6 @@
 import os
 import logging
 
-# Create logger
-logger = logging.getLogger('sync')
+# Create logger (No other details as AWS configures their own)
+logger = logging.getLogger()
 logger.setLevel(os.environ['LOG_LEVEL'])
-
-handler = logging.StreamHandler()
-handler.setLevel(os.environ['LOG_LEVEL'])
-log_formatter = logging.Formatter("%(asctime)s - %(levelname)s: %(message)s")
-handler.setFormatter(log_formatter)
-
-logger.addHandler(handler)
