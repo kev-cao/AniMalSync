@@ -15,12 +15,18 @@ body:
       placeholder: Describe the bug here
     validations:
       required: true
-  - type: input
-    id: device
+  - type: dropdown
+    id: browser
     attributes:
-      label: Device
-      description: What Apple device did you run into this bug on?
-      placeholder: Apple Device
+      label: Browser
+      description: What browsers did you run into this issue on?
+      multiple: true
+      options:
+        - Not a browser issue
+        - Firefox
+        - Chrome
+        - Safari
+        - Microsoft Edge
     validations:
       required: true
 
