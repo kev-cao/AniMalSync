@@ -251,6 +251,7 @@ def perform_sync(*, user_id):
     sns = boto3.resource('sns', region_name=app.config['AWS_REGION_NAME'])
     sync_topic = sns.Topic(app.config['AWS_SNS_SYNC_TOPIC'])
     sync_topic.publish(Message=json.dumps({
+        'type': 'USER',
         'user_id': user_id,
     }))
 

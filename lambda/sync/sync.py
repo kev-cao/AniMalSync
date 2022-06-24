@@ -69,7 +69,10 @@ def schedule_auto_sync():
     # planning on having that many users. If I were to scale this up, would
     # probably do a batch publish.
     for user in sync_users:
-        sync_topic.publish(Message=json.dumps({ 'user_id': user['id'] }))
+        sync_topic.publish(Message=json.dumps({
+            'type': 'USER',
+            'user_id': user['id']
+            }))
 
     # Reschedule another mass auto-sync.
     sfn = boto3.client('stepfunctions')
