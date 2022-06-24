@@ -10,7 +10,7 @@ from auth import User, login_manager, verify_password
 from forms import ChangeAniListUsernameForm, ChangeEmailForm, ChangePasswordForm, ForgotPasswordForm, LoginForm, RegisterForm, ResetPasswordForm
 from utils import (hash_password, redirect_back, get_redirect_target, get_dynamodb_user,
                   update_dynamodb_user, get_anilist_username, mal_is_authorized,
-                  schedule_sync)
+                  perform_sync)
 
 os.environ['TZ'] = "America/New_York"
 time.tzset()
@@ -359,7 +359,7 @@ def authorize_mal():
     # If the user's sync is enabled, send another request for sync.
     if user['sync_enabled']:
         try:
-            schedule_sync(user_id=user_id, now=True)
+            perform_sync(user_id=user_id)
         except ClientError as e:
             app.logger.error(
                 f"[User {user_id}] Failed to start new sync after MAL auth: {e}"
@@ -430,7 +430,7 @@ def autosync():
             }, 401
 
         try:
-            schedule_sync(user_id=current_user.id, now=True)
+            perform_sync(user_id=current_user.id)
         except ClientError as e:
             app.logger.error(f"Failed to schedule sync for user {current_user.id}: {e}")
             return {
