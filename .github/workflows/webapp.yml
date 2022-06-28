@@ -24,7 +24,7 @@ jobs:
           aws_access_key: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws_secret_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           region: ${{ secrets.AWS_REGION_NAME }}
-          version_label: AniMalSync-v-15
+          version_label: AniMalSync-v-16
           use_existing_version_if_available: true
           application_name: AniMalSync
           environment_name: Animalsync-env
