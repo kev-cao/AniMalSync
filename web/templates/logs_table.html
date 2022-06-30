@@ -1,0 +1,56 @@
+<div class="d-flex flex-wrap align-items-center">
+    <h2 class="me-auto">Sync Logs</h2>
+    <small class="text-muted">Last Sync: {{ last_sync }}</small>
+</div>
+<div class="table-responsive pt-1">
+    <table id="data-table" class="table table-hover">
+        <thead>
+            <tr>
+                <th scope="col">
+                    Sync Status
+                </th>
+                {% for field in log_headers.keys() %}
+                    <th scope="col">
+                        {{ field }}
+                    </th>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for log in logs %}
+                <tr>
+                    <th scope="row">
+                        {% if log['success'] %}
+                            <span class="bi bi-check-circle-fill text-success" role="img" aria-label="Success"></span>
+                        {% else %}
+                            <span class="bi bi-x-circle-fill text-danger" role="img" aria-label="Fail"></span>
+                        {% endif %}
+                    </th>
+                    {% for field in log_headers.values() %}
+                        {% if field == 'title' %}
+                            <td class="text-truncate" style="max-width: 250px">
+                                {{ log[field] }}
+                            </td>
+                        {% else %}
+                            <td>{{ log[field] }}</td>
+                        {% endif %}
+                    {% endfor %}
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% if not logs %}
+        <medium class="text-muted d-block text-center">No logs available.</medium>
+    {% endif %}
+    <script>
+        $(document).ready(() => {
+            $('#data-table').DataTable({
+                "pageLength": 10,
+                "paging": true,
+                "lengthChange": true,
+                "searching": false,
+                "ordering": false
+            });
+        });
+    </script>
+</div>
