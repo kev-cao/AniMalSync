@@ -115,12 +115,14 @@ def login():
     form = LoginForm()
     if form.validate_on_submit():
         result = verify_password(form.email.data, form.password.data)
-
+        ip_addr = request.environ.get('HTTP_X_FORWARDED_FOR', request.remote_addr)
         if result.ok:
+            app.logger.info(f"Successful login attempt for {form.email.data} from {ip_addr}")
             login_user(User(result.user), remember=form.remember_me.data, force=True)
             return redirect_back(fallback='home')
         else:
             if result.code == 401:
+                app.logger.info(f"Failed login attempt for {form.email.data} from {ip_addr}")
                 msg = "Login failed. Incorrect email or password."
             else:
                 msg = "An issue occurred on the server. Please try again later."

@@ -125,5 +125,5 @@ def verify_password(email, password):
         user['password'].encode('utf-8')
     ):
         return AuthenticationResult(code=401)
-    
+   
     return AuthenticationResult(code=200, user=user)
