@@ -1,5 +1,6 @@
 *.zip
 *.out
+*.orig
 cache.json
 
 # Byte-compiled / optimized / DLL files
