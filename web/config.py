@@ -6,12 +6,14 @@
 import boto3
 import json
 import os
+import datetime
 from json import JSONDecodeError
 from botocore.exceptions import ClientError
 
 aws_region = os.environ['AWS_REGION_NAME'] \
     if 'AWS_REGION_NAME' in os.environ else 'us-east-2'
 ssm = boto3.client('ssm', region_name=aws_region)
+
 
 class Config:
     """
@@ -37,6 +39,9 @@ class Config:
     APP_HOST = os.environ['APP_HOST_IP']
 
     APP_EMAIL = 'animalsync.app@gmail.com'
+
+    PERMANENT_SESSION_LIFETIME = datetime.timedelta(days=7)
+    REMEMBER_COOKIE_DURATION = datetime.timedelta(days=7)
 
     # AWS Variables
     AWS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID')
