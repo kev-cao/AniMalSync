@@ -33,8 +33,16 @@ class MALClient:
             (HTTPException): Update failed.
             (MalUnauthorizedException): User has not authorized AniMalSync to use MAL
         """
-        media_id = entry['media']['idMal']
         media_type = entry['media']['type']
+        media_id = entry['media']['idMal']
+        if media_id is None:
+            title_types = ['native', 'romaji', 'english'] # Native titles seem to have least ambiguity
+            for title_type in title_types:
+                if title := AnilistClient.get_media_title(entry, title_type):
+                    media_id = self.get_media_id(title, media_type == 'MANGA')
+                    if media_id is not None:
+                        break
+
         access_token, refresh_token = user['mal_access_token'], user['mal_refresh_token']
 
         url = f"{self.api}/{media_type.lower()}/{media_id}/my_list_status"
@@ -54,7 +62,7 @@ class MALClient:
                 if err.code != 401:
                     logger.error(
                         (f"[User {user['id']}] Error updating MAL {media_type} entry for "
-                         f"{AnilistClient.get_media_title(entry)}: {err.message}")
+                         f"{AnilistClient.get_media_title(entry)}: {err.message if hasattr(err, 'message') else 'No Error Message'}")
                     )
                     raise err
 
@@ -73,25 +81,25 @@ class MALClient:
                     logger.warning(f"[User {user['id']}] Must reauthorize user: {e}")
                     raise MalUnauthorizedException(user['id'])
 
-    def get_anime_id(self, title: str) -> Optional[int]:
+    def get_media_id(self, title: str, manga: False) -> Optional[int]:
         """
-        (DEPRECATED: Anilist pairs anime with MAL ID)
-        Searches MAL for the ID of an anime with the given title. Returns the
+        Searches MAL for the ID of a media with the given title. Returns the
         top match.
 
         Args:
-            title (str): The title of the anime to search for
+            title (str): The title of the media to search for
+            manga (bool): True if searching for manga, False if searching for anime
 
         Returns:
-            (Optional[int]): The anime ID, or None if no matches
+            (Optional[int]): The media ID, or None if no matches
         """
         self.session.headers.update({'X-MAL-CLIENT-ID': self.client_id})
         url_title = urllib.parse.quote_plus(title)
-        url = f"{self.api}/anime?q={url_title}&limit=1"
+        url = f"{self.api}/{'manga' if manga else 'anime'}?q={url_title}&limit=1"
         try:
             resp = self.__process_response(self.session.get(url))
         except HTTPException:
-            logger.warning(f"Error fetching anime using title {url_title}")
+            logger.warning(f"Error fetching {'manga' if manga else 'anime'} using title {url_title}")
             return None
 
         if len(resp['data']):
