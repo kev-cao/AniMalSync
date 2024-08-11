@@ -1,7 +1,6 @@
 name: Deploy Web App to Elastic Beanstalk
 on: 
   workflow_dispatch:
-  push:
     branches:
       - 'master'
     paths:
